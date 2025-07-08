@@ -16,4 +16,33 @@ public class RecommendationRepository {
         this.jdbcTemplate_posgresql = jdbcTemplate2;
     }
 
+    public int countTransaction(UUID userUUID) {
+        String sql = "SELECT COUNT (*) from transactions where user_ID = ?";
+        Integer result = jdbcTemplate_h2.queryForObject(sql, Integer.class, userUUID);
+        return result != null ? result : 0;
+    }
+
+    public int countTransactionByProductType(UUID userUUID, String productType) {
+        String sql = """
+                    SELECT COUNT(*)
+                    FROM transactions
+                    INNER JOIN products ON transactions.product_id = products.id
+                    WHERE transactions.user_ID = ? AND products.type = ?
+                """;
+        Integer result = jdbcTemplate_h2.queryForObject(sql, Integer.class, userUUID, productType);
+        return result != null ? result : 0;
+    }
+
+    public boolean findAptTypeProductByProductType(UUID userUUID, String productType) {
+        String sql = """
+                SELECT EXISTS (
+                  SELECT 1
+                    FROM transactions
+                    INNER JOIN products ON transactions.product_id = products.id
+                    WHERE transactions.user_ID = ? AND products.type = ?
+                    )
+                """;
+        boolean result = jdbcTemplate_h2.queryForObject(sql, Boolean.class, userUUID, productType);
+        return result;
+    }
 }
