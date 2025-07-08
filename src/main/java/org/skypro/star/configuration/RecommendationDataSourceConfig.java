@@ -13,8 +13,7 @@ import javax.sql.DataSource;
 public class RecommendationDataSourceConfig {
 
     @Bean(name = "recommendationDataSource")
-    public DataSource recommendationDataSource(
-            @Value("${application.recommendations-db.url}") String url) {
+    public DataSource recommendationDataSource(@Value("${application.recommendations-db.url}") String url) {
         HikariDataSource ds = new HikariDataSource();
         ds.setJdbcUrl(url);
         ds.setDriverClassName("org.h2.Driver");
@@ -23,8 +22,7 @@ public class RecommendationDataSourceConfig {
     }
 
     @Bean(name = "recommendationJdbcTemplate")
-    public JdbcTemplate recommendationJdbcTemplate(
-            DataSource recommendationDataSource) {
+    public JdbcTemplate recommendationJdbcTemplate(DataSource recommendationDataSource) {
         return new JdbcTemplate(recommendationDataSource);
     }
 }
