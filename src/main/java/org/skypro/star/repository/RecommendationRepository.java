@@ -1,4 +1,4 @@
-package org.skypro.star.service;
+package org.skypro.star.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -13,8 +13,4 @@ public class RecommendationRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public int getRandomTransactionAmount(UUID user) {
-        Integer result = jdbcTemplate.queryForObject("SELECT amount FROM TRANSACTIONS t WHERE t.user_id = ? LIMIT 1", Integer.class, user);
-        return result != null ? result : 0;
-    }
 }
