@@ -22,18 +22,18 @@ public class RecommendationController {
         return recommendationRepository.countTransaction(userId);
     }
 
-    @GetMapping("/get/amount-of-transaction-by-ProductType")
+    @GetMapping("/get/amount-of-transaction-by-productType")
     public int countTransactionByUserIdAndProductType(@RequestParam("userId") UUID userId, @RequestParam("productType") String productType) {
         return recommendationRepository.countTransactionByProductType(userId, productType);
     }
 
-    @GetMapping("/get/check-of-present-Product")
+    @GetMapping("/get/check-of-present-product-by-productType")
     public boolean findAptTypeProductByUserIdAndProductType(@RequestParam("userId") UUID userId, @RequestParam("productType") String productType) {
         return recommendationRepository.findAptTypeProductByProductType(userId, productType);
     }
 
-//    @GetMapping("/get/amount-of-transaction-by-ProductType/{userId}&{productType}")
-//    public int countTransactionByUserIdAndProductType(@PathVariable UUID userId, @PathVariable String productType) {
-//        return recommendationRepository.countTransactionByProductType(userId, productType);
-//    }
+    @GetMapping("/get/compare-of-current-and-apt-sum-of-amount-transactions")
+    public boolean findCurrentSumDepositMoreThatAptAmountByUserIdAndProductTypeAndAmount(@RequestParam("userId") UUID userId, @RequestParam("productType") String productType, @RequestParam("amount") Integer amount) {
+        return recommendationRepository.findTotalSumDepositsMoreThatAmountByProductTypeAndAmount(userId, productType, amount);
+    }
 }

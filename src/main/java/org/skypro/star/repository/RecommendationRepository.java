@@ -45,4 +45,19 @@ public class RecommendationRepository {
         boolean result = jdbcTemplate_h2.queryForObject(sql, Boolean.class, userUUID, productType);
         return result;
     }
+
+    public boolean findTotalSumDepositsMoreThatAmountByProductTypeAndAmount(UUID userUUID, String productType, Integer amount) {
+        String sql = """
+                SELECT EXISTS (
+                    SELECT 1
+                        FROM transactions t
+                        INNER JOIN products p ON t.product_id = p.id
+                        WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT'
+                        HAVING SUM(t.amount) > ?
+                        )
+                """;
+        boolean result = jdbcTemplate_h2.queryForObject(sql, Boolean.class, userUUID, productType, amount);
+        return result;
+    }
+
 }
