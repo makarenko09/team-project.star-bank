@@ -46,18 +46,33 @@ public class RecommendationRepository {
         return result;
     }
 
-    public boolean findTotalSumDepositsMoreThatAmountByProductTypeAndAmount(UUID userUUID, String productType, Integer amount) {
+    public boolean findTotalSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(UUID userUUID, String productType, Integer amount, Boolean equals) {
+        String getOperatorMoreThatAndEquals = equals ? ">=" : ">";
+
         String sql = """
                 SELECT EXISTS (
                     SELECT 1
                         FROM transactions t
-                        INNER JOIN products p ON t.product_id = p.id
+                            INNER JOIN products p ON t.product_id = p.id
                         WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT'
-                        HAVING SUM(t.amount) > ?
+                        HAVING SUM(t.amount)  """ + getOperatorMoreThatAndEquals + """
+                        ?
                         )
                 """;
         boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType, amount);
         return result;
     }
 
+    public boolean findSumMoreThatByTransactionTypeAndProductType(UUID userUUID, String productType) {
+        String sql = """
+                    SELECT
+                    SUM(CASE WHEN t.type = 'DEPOSIT' THEN t.amount ELSE 0 END) >
+                    SUM(CASE WHEN t.type = 'WITHDRAWAL' THEN t.amount ELSE 0 END)
+                    from transactions t
+                    INNER JOIN products p ON t.product_id = p.id
+                    where t.user_ID = ? AND p.type = ?
+                """;
+        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
+        return result;
+    }
 }
