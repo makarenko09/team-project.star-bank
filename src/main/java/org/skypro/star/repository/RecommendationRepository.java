@@ -8,17 +8,17 @@ import java.util.UUID;
 
 @Repository
 public class RecommendationRepository {
-    private final JdbcTemplate jdbcTemplate_h2;
-    private final JdbcTemplate jdbcTemplate_posgresql;
+    private final JdbcTemplate jdbcTemplateH2;
+    private final JdbcTemplate jdbcTemplatePosgresql;
 
     public RecommendationRepository(@Qualifier("recommendationJdbcTemplate") JdbcTemplate jdbcTemplate, JdbcTemplate jdbcTemplate2) {
-        this.jdbcTemplate_h2 = jdbcTemplate;
-        this.jdbcTemplate_posgresql = jdbcTemplate2;
+        this.jdbcTemplateH2 = jdbcTemplate;
+        this.jdbcTemplatePosgresql = jdbcTemplate2;
     }
 
     public int countTransaction(UUID userUUID) {
         String sql = "SELECT COUNT (*) from transactions where user_ID = ?";
-        Integer result = jdbcTemplate_h2.queryForObject(sql, Integer.class, userUUID);
+        Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID);
         return result != null ? result : 0;
     }
 
@@ -29,7 +29,7 @@ public class RecommendationRepository {
                     INNER JOIN products ON transactions.product_id = products.id
                     WHERE transactions.user_ID = ? AND products.type = ?
                 """;
-        Integer result = jdbcTemplate_h2.queryForObject(sql, Integer.class, userUUID, productType);
+        Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
         return result != null ? result : 0;
     }
 
@@ -42,7 +42,7 @@ public class RecommendationRepository {
                     WHERE transactions.user_ID = ? AND products.type = ?
                     )
                 """;
-        boolean result = jdbcTemplate_h2.queryForObject(sql, Boolean.class, userUUID, productType);
+        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
         return result;
     }
 
@@ -56,7 +56,7 @@ public class RecommendationRepository {
                         HAVING SUM(t.amount) > ?
                         )
                 """;
-        boolean result = jdbcTemplate_h2.queryForObject(sql, Boolean.class, userUUID, productType, amount);
+        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType, amount);
         return result;
     }
 
