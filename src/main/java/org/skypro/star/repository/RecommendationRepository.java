@@ -1,78 +1,127 @@
 package org.skypro.star.repository;
 
+import org.skypro.star.model.Recommendation;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
-import java.util.UUID;
+import java.util.*;
 
 @Repository
 public class RecommendationRepository {
-    private final JdbcTemplate jdbcTemplateH2;
-    private final JdbcTemplate jdbcTemplatePosgresql;
+    private final JdbcTemplate jdbcTemplatePostgresql;
 
-    public RecommendationRepository(@Qualifier("recommendationJdbcTemplate") JdbcTemplate jdbcTemplate, JdbcTemplate jdbcTemplate2) {
-        this.jdbcTemplateH2 = jdbcTemplate;
-        this.jdbcTemplatePosgresql = jdbcTemplate2;
+    public RecommendationRepository(@Qualifier("postgresqlJdbcTemplate") JdbcTemplate jdbcTemplatePostgresql) {
+        this.jdbcTemplatePostgresql = jdbcTemplatePostgresql;
     }
 
-    public int countTransaction(UUID userUUID) {
-        String sql = "SELECT COUNT (*) from transactions where user_ID = ?";
-        Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID);
-        return result != null ? result : 0;
+    public Recommendation getRecommendation(UUID ruleId) {
+        Recommendation recommendation = null;
+
+        if (checkRuleIdWithHandlerExc(ruleId)) {
+            String sql = "select * from recommendation where id = ?";
+
+            Recommendation answer = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleId}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("text")));
+
+        }
+        return recommendation;
     }
 
-    public int countTransactionByProductType(UUID userUUID, String productType) {
-        String sql = """
-                    SELECT COUNT(*)
-                    FROM transactions
-                    INNER JOIN products ON transactions.product_id = products.id
-                    WHERE transactions.user_ID = ? AND products.type = ?
+    public Recommendation getRecommendation(String ruleName) {
+        Recommendation recommendation = null;
+
+        String searchRuleId = """
+                SELECT EXISTS(
+                    select 1
+                    from recommendation
+                    where name = ?
+                )
                 """;
-        Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
-        return result != null ? result : 0;
+        Boolean checkRuleName = jdbcTemplatePostgresql.queryForObject(searchRuleId, Boolean.class, ruleName);
+
+
+        if (checkRuleName) {
+            String sql = "select name, id, description from recommendation where name = ?";
+            recommendation = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleName}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("description")));
+        } else {
+            throw new NoSuchObjectException("on Postgresql" + recommendation.toString());
+        }
+
+        return recommendation;
     }
 
-    public boolean findAptTypeProductByProductType(UUID userUUID, String productType) {
-        String sql = """
-                SELECT EXISTS (
-                  SELECT 1
-                    FROM transactions
-                    INNER JOIN products ON transactions.product_id = products.id
-                    WHERE transactions.user_ID = ? AND products.type = ?
-                    )
-                """;
-        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
-        return result;
+    private boolean checkRuleIdWithHandlerExc(UUID ruleId) {
+        Map<Boolean, UUID> resultGetId = getRuleId(ruleId);
+        if (Objects.equals(resultGetId.get(true), ruleId)) {
+            return true;
+        }
+        if (Objects.equals(resultGetId.get(false), ruleId)) {
+            throw new NoSuchObjectException("on Postgresql" + ruleId.toString());
+        }
+        return false;
     }
 
-    public boolean findTotalSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(UUID userUUID, String productType, Integer amount, Boolean equals) {
-        String getOperatorMoreThatAndEquals = equals ? ">=" : ">";
-
-        String sql = """
-                SELECT EXISTS (
-                    SELECT 1
-                        FROM transactions t
-                            INNER JOIN products p ON t.product_id = p.id
-                        WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT'
-                        HAVING SUM(t.amount)  """ + getOperatorMoreThatAndEquals + """
-                        ?
-                        )
-                """;
-        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType, amount);
-        return result;
+    public void insertRecommendationOnPostgresql(UUID ruleId, String name, @Nullable List<String> rules, String text) {
+        if (!checkRuleIdWithHandlerExc(ruleId)) {
+            String sql = "INSERT INTO recommendation (id, name, rules, description, users) VALUES (?, ?, '{}', ? , '{}') ";
+            jdbcTemplatePostgresql.update(sql, ruleId, name, text);
+            appendRules(ruleId, rules);
+        }
     }
 
-    public boolean findSumMoreThatByTransactionTypeAndProductType(UUID userUUID, String productType) {
-        String sql = """
-                    SELECT
-                    SUM(CASE WHEN t.type = 'DEPOSIT' THEN t.amount ELSE 0 END) >
-                    SUM(CASE WHEN t.type = 'WITHDRAWAL' THEN t.amount ELSE 0 END)
-                    from transactions t
-                    INNER JOIN products p ON t.product_id = p.id
-                    where t.user_ID = ? AND p.type = ?
+    private boolean checkRuleId(UUID ruleId) {
+        String searchRuleId = """
+                SELECT EXISTS(
+                    select 1
+                    from recommendation
+                    where id = ?
+                )
                 """;
-        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
-        return result;
+        return jdbcTemplatePostgresql.queryForObject(searchRuleId, Boolean.class, ruleId);
+    }
+
+    private Map<Boolean, UUID> getRuleId(UUID ruleId) {
+        boolean ruleIdIsPresent = checkRuleId(ruleId);
+
+        UUID id = null;
+
+        if (ruleIdIsPresent) {
+            String getRuleId = """
+                    select id
+                    from recommendation
+                    where id = ?
+                    """;
+            id = jdbcTemplatePostgresql.queryForObject(getRuleId, new Object[]{ruleId}, (rs, rowNum) -> rs.getObject("id", UUID.class));
+        }
+        HashMap<Boolean, UUID> booleanUUIDHashMap = new HashMap<>();
+        booleanUUIDHashMap.put(ruleIdIsPresent, id);
+        return booleanUUIDHashMap;
+    }
+
+    private boolean appendRules(UUID ruleId, List<String> rules) {
+        if (rules == null || rules.isEmpty()) return false;
+
+
+        String sql = """
+                    UPDATE recommendation
+                    SET rules = array_append(COALESCE(rules, '{}'), ?)
+                    WHERE id = ?
+                """;
+
+        int updatedCount = 0;
+        for (String rule : rules) {
+            updatedCount += jdbcTemplatePostgresql.update(sql, rule, ruleId);
+        }
+        return updatedCount == rules.size();
+    }
+
+    public boolean insertUser(UUID rulesId, UUID userId) {
+        String sql = """
+                UPDATE recommendation SET users = array_append(users, ?) WHERE id = ?
+                """;
+        int updates = jdbcTemplatePostgresql.update(sql, userId, rulesId);
+        return updates > 0;
     }
 }
+

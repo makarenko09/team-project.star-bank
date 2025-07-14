@@ -1,7 +1,9 @@
 package org.skypro.star.service;
 
-import org.skypro.star.model.Recommendation;
+import org.skypro.star.model.RecommendationAnswer;
+
+import java.util.UUID;
 
 public interface RecommendationRuleSet {
-    Recommendation getRecommendation();
+    RecommendationAnswer getRecommendation(UUID uuid);
 }
