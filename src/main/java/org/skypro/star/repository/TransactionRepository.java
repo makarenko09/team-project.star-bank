@@ -1,0 +1,77 @@
+package org.skypro.star.repository;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
+
+@Repository
+public class TransactionRepository {
+    private final JdbcTemplate jdbcTemplateH2;
+
+    public TransactionRepository(@Qualifier("h2JdbcTemplate") JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplateH2 = jdbcTemplate;
+    }
+
+    public int countTransaction(UUID userUUID) {
+        String sql = "SELECT COUNT (*) from transactions where user_ID = ?";
+        Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID);
+        return result != null ? result : 0;
+    }
+
+    public int countTransactionByProductType(UUID userUUID, String productType) {
+        String sql = """
+                    SELECT COUNT(*)
+                    FROM transactions
+                    INNER JOIN products ON transactions.product_id = products.id
+                    WHERE transactions.user_ID = ? AND products.type = ?
+                """;
+        Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
+        return result != null ? result : 0;
+    }
+
+    public boolean findAptTypeProductByProductType(UUID userUUID, String productType) {
+        String sql = """
+                SELECT EXISTS (
+                  SELECT 1
+                    FROM transactions
+                    INNER JOIN products ON transactions.product_id = products.id
+                    WHERE transactions.user_ID = ? AND products.type = ?
+                    )
+                """;
+        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
+        return result;
+    }
+
+    public boolean findCurrentSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(UUID userUUID, String productType, Integer amount, Boolean equals) {
+        String getOperatorMoreThatAndEquals = equals ? ">=" : ">";
+
+        String sql = """
+                SELECT EXISTS (
+                    SELECT 1
+                        FROM transactions t
+                            INNER JOIN products p ON t.product_id = p.id
+                        WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT'
+                        HAVING SUM(t.amount)  """ + getOperatorMoreThatAndEquals + """
+                        ?
+                        )
+                """;
+        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType, amount);
+        return result;
+    }
+
+    public boolean findSumMoreThatByTransactionTypeAndProductType(UUID userUUID, String productType) {
+        String sql = """
+                    SELECT
+                    SUM(CASE WHEN t.type = 'DEPOSIT' THEN t.amount ELSE 0 END) >
+                    SUM(CASE WHEN t.type = 'WITHDRAWAL' THEN t.amount ELSE 0 END)
+                    from transactions t
+                    INNER JOIN products p ON t.product_id = p.id
+                    where t.user_ID = ? AND p.type = ?
+                """;
+        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
+        return result;
+    }
+
+}
