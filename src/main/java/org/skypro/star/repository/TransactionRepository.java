@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -44,21 +46,46 @@ public class TransactionRepository {
         return result;
     }
 
-    public boolean findCurrentSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(UUID userUUID, String productType, Integer amount, Boolean equals) {
-        String getOperatorMoreThatAndEquals = equals ? ">=" : ">";
-
+    public boolean findCurrentSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(UUID userUUID,
+                                                                                         String productType,
+                                                                                         Integer amount,
+                                                                                         Boolean equals) {
         String sql = """
-                SELECT EXISTS (
-                    SELECT 1
+                    SELECT SUM(t.AMOUNT)
+                    FROM transactions t
+                    INNER JOIN products p ON t.product_id = p.id
+                    WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT';
+                """;
+        int sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
+
+        if (equals) {
+            return sum >= amount;
+        } else {
+            return sum > amount;
+        }
+    }
+
+    public boolean compareCurrentSumDepositsToAptSumByProductTypeAndAmountAndAnyOperator(UUID userUUID,
+                                                                                         String productType,
+                                                                                         Integer amount,
+                                                                                         String operator) {
+        List<String> correctOperator = Arrays.asList(">", "<", "=", ">=", "<=");
+        String sql = """
+                        select Sum(t.AMOUNT)
                         FROM transactions t
                             INNER JOIN products p ON t.product_id = p.id
                         WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT'
-                        HAVING SUM(t.amount)  """ + getOperatorMoreThatAndEquals + """
-                        ?
-                        )
+                
                 """;
-        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType, amount);
-        return result;
+        int sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType, amount);
+        return switch (operator) {
+            case ">" -> sum > amount;
+            case "<" -> sum < amount;
+            case "=" -> sum == amount;
+            case ">=" -> sum >= amount;
+            case "<=" -> sum <= amount;
+            default -> throw new NoValidValueException(operator.toString());
+        };
     }
 
     public boolean findSumMoreThatByTransactionTypeAndProductType(UUID userUUID, String productType) {

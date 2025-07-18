@@ -1,5 +1,8 @@
 package org.skypro.star.repository;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.skypro.star.model.DynamicRule;
 import org.skypro.star.model.Recommendation;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -70,6 +73,14 @@ public class RecommendationRepository {
         }
     }
 
+    public void insertRecommendationWithQuery(UUID ruleId, String name, @Nullable List<DynamicRule> rules, String text) {
+        if (!checkRuleIdWithHandlerExc(ruleId)) {
+            String sql = "INSERT INTO recommendation (id, name, rules, description, users) VALUES (?, ?, '{}', ? , '{}') ";
+            jdbcTemplatePostgresql.update(sql, ruleId, name, text);
+            appendDynamicRules(ruleId, rules);
+        }
+    }
+
     private boolean checkRuleId(UUID ruleId) {
         String searchRuleId = """
                 SELECT EXISTS(
@@ -102,7 +113,6 @@ public class RecommendationRepository {
     private boolean appendRules(UUID ruleId, List<String> rules) {
         if (rules == null || rules.isEmpty()) return false;
 
-
         String sql = """
                     UPDATE recommendation
                     SET rules = array_append(COALESCE(rules, '{}'), ?)
@@ -114,6 +124,38 @@ public class RecommendationRepository {
             updatedCount += jdbcTemplatePostgresql.update(sql, rule, ruleId);
         }
         return updatedCount == rules.size();
+    }
+
+    private boolean appendDynamicRules(UUID ruleId, List<DynamicRule> rules) {
+        List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
+        boolean containsCorrectQuery = rules.stream()
+                .map(dr -> dr.getQuery())
+                .allMatch(correctQuery::contains);
+
+        if (rules == null || !containsCorrectQuery) {
+            throw new NoValidValueException(rules.toString());
+        }
+
+        //TODO
+        if (containsCorrectQuery) {
+            String sql = """
+                        UPDATE recommendation
+                        SET rules_query = array_append(COALESCE(rules_query, '{}'), ?::jsonb)
+                        WHERE id = ?
+                    """;
+
+            int updatedCount = 0;
+            for (DynamicRule rule : rules) {
+                try {
+                    String ruleValue = new ObjectMapper().writeValueAsString(rule);
+                    updatedCount += jdbcTemplatePostgresql.update(sql, ruleValue, ruleId);
+                } catch (JsonProcessingException e) {
+                    throw new NoValidValueException(e.toString());
+                }
+            }
+            return updatedCount == rules.size();
+        }
+        return false;
     }
 
     public boolean insertUser(UUID rulesId, UUID userId) {

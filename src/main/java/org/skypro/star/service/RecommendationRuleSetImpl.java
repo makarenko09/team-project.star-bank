@@ -1,10 +1,11 @@
 package org.skypro.star.service;
 
+import org.skypro.star.model.DynamicRule;
 import org.skypro.star.model.Recommendation;
 import org.skypro.star.model.RecommendationAnswer;
+import org.skypro.star.model.RecommendationWithDynamicRule;
 import org.skypro.star.repository.RecommendationRepository;
 import org.skypro.star.repository.TransactionRepository;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -23,6 +24,16 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         this.recommendationRepository = recommendationRepository;
         this.transactionRepository = transactionRepository;
         rulesData();
+    }
+
+    public void insertData(RecommendationWithDynamicRule recommendationWithDynamicRule) {
+        DynamicRule[] dynamicRule = recommendationWithDynamicRule.getDynamicRule();
+        List<DynamicRule> dynamicRuleList = Arrays.asList(dynamicRule);
+        recommendationRepository.insertRecommendationWithQuery(recommendationWithDynamicRule.getId(),
+                recommendationWithDynamicRule.getName(),
+                dynamicRuleList,
+                recommendationWithDynamicRule.getText());
+
     }
 
     enum transactionType {
