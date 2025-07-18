@@ -128,15 +128,12 @@ public class RecommendationRepository {
 
     private boolean appendDynamicRules(UUID ruleId, List<DynamicRule> rules) {
         List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
-        boolean containsCorrectQuery = rules.stream()
-                .map(dr -> dr.getQuery())
-                .allMatch(correctQuery::contains);
+        boolean containsCorrectQuery = rules.stream().map(dr -> dr.getQuery()).allMatch(correctQuery::contains);
 
         if (rules == null || !containsCorrectQuery) {
             throw new NoValidValueException(rules.toString());
         }
 
-        //TODO
         if (containsCorrectQuery) {
             String sql = """
                         UPDATE recommendation
