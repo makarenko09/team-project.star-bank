@@ -1,13 +1,14 @@
 package org.skypro.star.service;
 
-import org.skypro.star.model.DynamicRule;
-import org.skypro.star.model.Recommendation;
-import org.skypro.star.model.RecommendationAnswer;
-import org.skypro.star.model.RecommendationWithDynamicRule;
+import org.skypro.star.model.*;
 import org.skypro.star.repository.RecommendationRepository;
 import org.skypro.star.repository.TransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.sql.DataSource;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -19,21 +20,32 @@ import static org.skypro.star.service.RecommendationRuleSetImpl.recommendation.g
 public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     private final RecommendationRepository recommendationRepository;
     private final TransactionRepository transactionRepository;
+    private final JdbcTemplate postgresqlJdbcTemplate;
 
-    public RecommendationRuleSetImpl(RecommendationRepository recommendationRepository, TransactionRepository transactionRepository) {
+    public RecommendationRuleSetImpl(RecommendationRepository recommendationRepository, TransactionRepository transactionRepository, JdbcTemplate postgresqlJdbcTemplate) {
         this.recommendationRepository = recommendationRepository;
         this.transactionRepository = transactionRepository;
         rulesData();
+        this.postgresqlJdbcTemplate = postgresqlJdbcTemplate;
     }
 
-    public void insertData(RecommendationWithDynamicRule recommendationWithDynamicRule) {
+    public RecommendationAnswerDynamicRule insertData(RecommendationWithDynamicRule recommendationWithDynamicRule) {
+        Integer rowNumberId = null;
+
         DynamicRule[] dynamicRule = recommendationWithDynamicRule.getDynamicRule();
         List<DynamicRule> dynamicRuleList = Arrays.asList(dynamicRule);
-        recommendationRepository.insertRecommendationWithQuery(recommendationWithDynamicRule.getId(),
+
+        UUID ruleUUID = recommendationWithDynamicRule.getId();
+        boolean resultInsertAndUpdateDynamicRule = recommendationRepository.insertRecommendationWithQuery(
+                ruleUUID,
                 recommendationWithDynamicRule.getName(),
                 dynamicRuleList,
                 recommendationWithDynamicRule.getText());
 
+        if (resultInsertAndUpdateDynamicRule) {
+            rowNumberId = recommendationRepository.getRowNumberId(ruleUUID);
+        }
+        return new RecommendationAnswerDynamicRule(rowNumberId, recommendationWithDynamicRule);
     }
 
     enum transactionType {
@@ -136,13 +148,13 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     }
 
     public List<Recommendation> handlerOverlap(UUID userUUID) {
-        return Arrays.stream(recommendation.values()).filter(rule -> rule.checkRule(userUUID,transactionRepository))
+        return Arrays.stream(recommendation.values()).filter(rule -> rule.checkRule(userUUID, transactionRepository))
                 .map(rec -> recommendationRepository.getRecommendation(getName(rec))).collect(Collectors.toList());
     }
 
     @Override
-    public RecommendationAnswer getRecommendation(UUID userUUID) {
-        return new RecommendationAnswer(userUUID.toString(), handlerOverlap(userUUID));
+    public RecommendationAnswerUser getRecommendation(UUID userUUID) {
+        return new RecommendationAnswerUser(userUUID.toString(), handlerOverlap(userUUID));
     }
 
 

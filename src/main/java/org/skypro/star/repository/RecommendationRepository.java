@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.skypro.star.model.DynamicRule;
 import org.skypro.star.model.Recommendation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
@@ -14,6 +17,7 @@ import java.util.*;
 @Repository
 public class RecommendationRepository {
     private final JdbcTemplate jdbcTemplatePostgresql;
+    private final Logger logger = LoggerFactory.getLogger(RecommendationRepository.class);
 
     public RecommendationRepository(@Qualifier("postgresqlJdbcTemplate") JdbcTemplate jdbcTemplatePostgresql) {
         this.jdbcTemplatePostgresql = jdbcTemplatePostgresql;
@@ -54,17 +58,6 @@ public class RecommendationRepository {
         return recommendation;
     }
 
-    private boolean checkRuleIdWithHandlerExc(UUID ruleId) {
-        Map<Boolean, UUID> resultGetId = getRuleId(ruleId);
-        if (Objects.equals(resultGetId.get(true), ruleId)) {
-            return true;
-        }
-        if (Objects.equals(resultGetId.get(false), ruleId)) {
-            throw new NoSuchObjectException("on Postgresql" + ruleId.toString());
-        }
-        return false;
-    }
-
     public void insertRecommendationOnPostgresql(UUID ruleId, String name, @Nullable List<String> rules, String text) {
         if (!checkRuleIdWithHandlerExc(ruleId)) {
             String sql = "INSERT INTO recommendation (id, name, rules, description, users) VALUES (?, ?, '{}', ? , '{}') ";
@@ -73,11 +66,37 @@ public class RecommendationRepository {
         }
     }
 
-    public void insertRecommendationWithQuery(UUID ruleId, String name, @Nullable List<DynamicRule> rules, String text) {
-        if (!checkRuleIdWithHandlerExc(ruleId)) {
-            String sql = "INSERT INTO recommendation (id, name, rules, description, users) VALUES (?, ?, '{}', ? , '{}') ";
-            jdbcTemplatePostgresql.update(sql, ruleId, name, text);
-            appendDynamicRules(ruleId, rules);
+    public boolean insertRecommendationWithQuery(UUID ruleId, String name, @Nullable List<DynamicRule> rules, String text) {
+        if (checkRuleId(ruleId)) {
+            logger.warn("Recommendation with id {} already exists", ruleId);
+            return false;
+        }
+
+        
+            String sql = "INSERT INTO recommendation (id, name, rules_query, description, users) VALUES (?, ?, '{}', ? , '{}') ";
+        int resultUpdate = jdbcTemplatePostgresql.update(sql, ruleId, name, text);
+        boolean resultUpdateRules = appendDynamicRules(ruleId, rules);
+        
+        
+        boolean success = resultUpdate > 0 && resultUpdateRules;
+        logger.info("Inserted recommendation for id: {}, success: {}", ruleId, success);
+        return success;
+    }
+
+    public Integer getRowNumberId(UUID ruleUUID) {
+        String searchRowRuleId = """
+                WITH incriment AS (
+                    SELECT id, ROW_NUMBER() OVER (ORDER BY id ASC) AS sequence_number
+                    FROM recommendation
+                )
+                SELECT sequence_number
+                FROM incriment
+                WHERE id = ?::uuid
+                """;
+        try {
+            return jdbcTemplatePostgresql.queryForObject(searchRowRuleId, Integer.class, ruleUUID);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
         }
     }
 
@@ -110,6 +129,17 @@ public class RecommendationRepository {
         return booleanUUIDHashMap;
     }
 
+    private boolean checkRuleIdWithHandlerExc(UUID ruleId) {
+        Map<Boolean, UUID> resultGetId = getRuleId(ruleId);
+        if (Objects.equals(resultGetId.get(true), ruleId)) {
+            return true;
+        }
+        if (Objects.equals(resultGetId.get(false), null)) {
+            throw new NoSuchObjectException("on Postgresql" + ruleId.toString());
+        }
+        return false;
+    }
+
     private boolean appendRules(UUID ruleId, List<String> rules) {
         if (rules == null || rules.isEmpty()) return false;
 
@@ -127,32 +157,46 @@ public class RecommendationRepository {
     }
 
     private boolean appendDynamicRules(UUID ruleId, List<DynamicRule> rules) {
+        if (rules == null || rules.isEmpty()) {
+            logger.warn("Rules list is null or empty for ruleId: {}", ruleId);
+            return false;
+        }
+
         List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
-        boolean containsCorrectQuery = rules.stream().map(dr -> dr.getQuery()).allMatch(correctQuery::contains);
+        boolean containsCorrectQuery = rules.stream().map(DynamicRule::getQuery).allMatch(correctQuery::contains);
+        logger.info("Rules list contains correctQuery, boolean = {}", containsCorrectQuery);
 
-        if (rules == null || !containsCorrectQuery) {
-            throw new NoValidValueException(rules.toString());
+        if (!containsCorrectQuery) {
+            logger.error("Invalid query in rules: {}", rules);
+            throw new NoValidValueException("Invalid query in rules: " + rules);
         }
 
-        if (containsCorrectQuery) {
-            String sql = """
-                        UPDATE recommendation
-                        SET rules_query = array_append(COALESCE(rules_query, '{}'), ?::jsonb)
-                        WHERE id = ?
-                    """;
+        if (!checkRuleId(ruleId)) {
+            logger.error("No recommendation found for id: {}", ruleId);
+            throw new NoValidValueException("No recommendation found for id: " + ruleId);
+        }
 
-            int updatedCount = 0;
-            for (DynamicRule rule : rules) {
-                try {
-                    String ruleValue = new ObjectMapper().writeValueAsString(rule);
-                    updatedCount += jdbcTemplatePostgresql.update(sql, ruleValue, ruleId);
-                } catch (JsonProcessingException e) {
-                    throw new NoValidValueException(e.toString());
-                }
+        String sql = """
+                    UPDATE recommendation
+                    SET rules_query = array_append(COALESCE(rules_query, '{}'), ?::jsonb)
+                    WHERE id = ?
+                """;
+
+        int updatedCount = 0;
+        for (DynamicRule rule : rules) {
+            try {
+                String ruleValue = new ObjectMapper().writeValueAsString(rule);
+                logger.debug("Appending rule: {} for ruleId: {}", ruleValue, ruleId);
+                updatedCount += jdbcTemplatePostgresql.update(sql, ruleValue, ruleId);
+            } catch (JsonProcessingException e) {
+                logger.error("Failed to serialize rule: {} for ruleId: {}", rule, ruleId, e);
+                throw new NoValidValueException("Failed to serialize rule: " + e.getMessage());
             }
-            return updatedCount == rules.size();
         }
-        return false;
+        boolean success = updatedCount == rules.size();
+        logger.info("Appended {} rules for ruleId: {}, success: {}", updatedCount, ruleId, success);
+        return success;
+
     }
 
     public boolean insertUser(UUID rulesId, UUID userId) {
