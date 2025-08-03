@@ -5,6 +5,10 @@ import lombok.Data;
 
 import java.util.UUID;
 
-
-public record Recommendation(String name, UUID id, String text) {
+@Data
+@AllArgsConstructor
+public class Recommendation {
+    private final String name;
+    private final UUID id;
+    private final String text;
 }
