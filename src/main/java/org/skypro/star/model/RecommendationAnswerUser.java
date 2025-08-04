@@ -8,6 +8,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class RecommendationAnswerUser {
-    private final String user_id;
+    private final String userId;
     private final List<Recommendation> recommendations;
 }
