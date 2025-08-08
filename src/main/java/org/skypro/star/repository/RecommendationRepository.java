@@ -7,6 +7,7 @@ import org.skypro.star.model.Recommendation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
@@ -23,19 +24,30 @@ public class RecommendationRepository {
         this.jdbcTemplatePostgresql = jdbcTemplatePostgresql;
     }
 
+    @Cacheable(value = "recommendationsById", key = "#ruleId()")
     public Recommendation getRecommendation(UUID ruleId) {
+        logger.info("Fetching recommendation from database for ID: {}", ruleId);
         Recommendation recommendation = null;
 
         if (checkRuleIdWithHandlerExc(ruleId)) {
             String sql = "select * from recommendation where id = ?";
 
-            Recommendation answer = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleId}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("text")));
-
+            recommendation = jdbcTemplatePostgresql.queryForObject(
+                    sql,
+                    new Object[]{ruleId},
+                    (rs, rowNum) -> new Recommendation(
+                            rs.getString("name"),
+                            rs.getObject("id", UUID.class),
+                            rs.getString("text")
+                    )
+            );
         }
         return recommendation;
     }
 
+    @Cacheable(value = "recommendationsByName", key = "#ruleName")
     public Recommendation getRecommendation(String ruleName) {
+        logger.info("Fetching recommendation from database for name: {}", ruleName);
         Recommendation recommendation = null;
 
         String searchRuleId = """
@@ -82,7 +94,7 @@ public class RecommendationRepository {
         logger.info("Inserted recommendation for id: {}, success: {}", ruleId, success);
         return success;
     }
-
+    @Cacheable(value = "recommendationsById", key = "#ruleUUID")
     public Integer getRowNumberId(UUID ruleUUID) {
         String searchRowRuleId = """
                 WITH incriment AS (
