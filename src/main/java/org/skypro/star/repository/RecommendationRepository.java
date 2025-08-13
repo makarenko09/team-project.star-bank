@@ -7,45 +7,84 @@ import org.skypro.star.model.Recommendation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Array;
 import java.util.*;
 
 @Repository
 public class RecommendationRepository {
     private final JdbcTemplate jdbcTemplatePostgresql;
     private final Logger logger = LoggerFactory.getLogger(RecommendationRepository.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public RecommendationRepository(@Qualifier("postgresqlJdbcTemplate") JdbcTemplate jdbcTemplatePostgresql) {
         this.jdbcTemplatePostgresql = jdbcTemplatePostgresql;
     }
 
-    @Cacheable(value = "recommendationsById", key = "#ruleId()")
-    public Recommendation getRecommendation(UUID ruleId) {
-        logger.info("Fetching recommendation from database for ID: {}", ruleId);
+    //    @Cacheable(value = "recommendationsById", key = "#ruleId()")
+    public Recommendation getRecommendation(UUID ruleUUID) {
+        logger.info("Fetching recommendation from database for name: {}", ruleUUID);
         Recommendation recommendation = null;
 
-        if (checkRuleIdWithHandlerExc(ruleId)) {
-            String sql = "select * from recommendation where id = ?";
+        String searchRuleId = """
+                SELECT EXISTS(
+                    select 1
+                    from recommendation
+                    where id = ?
+                )
+                """;
+        Boolean checkRuleName = jdbcTemplatePostgresql.queryForObject(searchRuleId, new Object[]{ruleUUID}, Boolean.class);
 
-            recommendation = jdbcTemplatePostgresql.queryForObject(
-                    sql,
-                    new Object[]{ruleId},
-                    (rs, rowNum) -> new Recommendation(
-                            rs.getString("name"),
-                            rs.getObject("id", UUID.class),
-                            rs.getString("text")
-                    )
-            );
+
+        if (checkRuleName) {
+            String sql = "select name, id, description from recommendation where id = ?";
+            recommendation = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleUUID}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("description")));
+        } else {
+            throw new NoSuchObjectException("on Postgresql" + recommendation.toString());
         }
+
         return recommendation;
     }
 
-    @Cacheable(value = "recommendationsByName", key = "#ruleName")
+    public List<DynamicRule> getDynamicRulesByIdFromJSONB(UUID ruleId) {
+        String sql = "SELECT rules_query FROM recommendation WHERE id = ?";
+
+        return jdbcTemplatePostgresql.queryForObject(
+                sql,
+                new Object[]{ruleId},
+                (rs, rowNum) -> {
+                    Array arr = rs.getArray("rules_query");
+                    if (arr == null) {
+                        return Collections.emptyList();
+                    }
+
+                    String[] jsons = (String[]) arr.getArray();
+                    if (jsons == null) {
+                        return Collections.emptyList();
+                    }
+
+                    List<DynamicRule> out = new ArrayList<>(jsons.length);
+                    for (String json : jsons) {
+                        if (json != null) {
+                            try {
+                                out.add(objectMapper.readValue(json, DynamicRule.class));
+                            } catch (JsonProcessingException e) {
+                                throw new RuntimeException(
+                                        "Failed to parse rule JSON: " + json, e
+                                );
+                            }
+                        }
+                    }
+                    return out;
+                }
+        );
+    }
+
+    //    @Cacheable(value = "recommendationsByName", key = "#ruleName")
     public Recommendation getRecommendation(String ruleName) {
         logger.info("Fetching recommendation from database for name: {}", ruleName);
         Recommendation recommendation = null;
@@ -78,23 +117,29 @@ public class RecommendationRepository {
         }
     }
 
+    public List<UUID> getAllIdDynamicRules() {
+        String sql = "SELECT id FROM recommendation";
+        return jdbcTemplatePostgresql.query(sql, (rs, rowNum) -> rs.getObject("id", UUID.class));
+    }
+
     public boolean insertRecommendationWithQuery(UUID ruleId, String name, @Nullable List<DynamicRule> rules, String text) {
         if (checkRuleId(ruleId)) {
             logger.warn("Recommendation with id {} already exists", ruleId);
             return false;
         }
 
-        
-            String sql = "INSERT INTO recommendation (id, name, rules_query, description, users) VALUES (?, ?, '{}', ? , '{}') ";
+
+        String sql = "INSERT INTO recommendation (id, name, rules_query, description, users) VALUES (?, ?, '{}', ? , '{}') ";
         int resultUpdate = jdbcTemplatePostgresql.update(sql, ruleId, name, text);
         boolean resultUpdateRules = appendDynamicRules(ruleId, rules);
-        
-        
+
+
         boolean success = resultUpdate > 0 && resultUpdateRules;
         logger.info("Inserted recommendation for id: {}, success: {}", ruleId, success);
         return success;
     }
-    @Cacheable(value = "recommendationsById", key = "#ruleUUID")
+
+    //    @Cacheable(value = "recommendationsById", key = "#ruleUUID")
     public Integer getRowNumberId(UUID ruleUUID) {
         String searchRowRuleId = """
                 WITH incriment AS (
