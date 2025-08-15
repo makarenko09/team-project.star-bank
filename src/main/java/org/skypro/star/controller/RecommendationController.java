@@ -35,7 +35,11 @@ public class RecommendationController {
 
     @GetMapping("/rule")
     public RecommendationsAnswerDynamicRule getAllDynamicRules() {
-        return recommendationRuleSet.getData();
+        long start = System.currentTimeMillis();
+        RecommendationsAnswerDynamicRule data = recommendationRuleSet.getData();
+        long duration = System.currentTimeMillis() - start;
+        logger.info("⏱ calling (parent) method executed in {} ms", duration);
+        return data;
     }
 
     @DeleteMapping
