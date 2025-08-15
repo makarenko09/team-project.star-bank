@@ -1,10 +1,17 @@
 package org.skypro.star.service;
 
-import org.skypro.star.model.Recommendation;
-import org.skypro.star.model.RecommendationAnswer;
+import org.skypro.star.model.*;
+import org.skypro.star.model.mapper.RecommendationMapper;
 import org.skypro.star.repository.RecommendationRepository;
 import org.skypro.star.repository.TransactionRepository;
-import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.event.EventListener;
+import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -18,11 +25,65 @@ import static org.skypro.star.service.RecommendationRuleSetImpl.recommendation.g
 public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     private final RecommendationRepository recommendationRepository;
     private final TransactionRepository transactionRepository;
+       private final RecommendationMapper recommendationMapper;
+    private final Logger log = LoggerFactory.getLogger(RecommendationRuleSetImpl.class);
 
-    public RecommendationRuleSetImpl(RecommendationRepository recommendationRepository, TransactionRepository transactionRepository) {
+    public RecommendationRuleSetImpl(RecommendationRepository recommendationRepository, TransactionRepository transactionRepository, RecommendationMapper recommendationMapper) {
         this.recommendationRepository = recommendationRepository;
         this.transactionRepository = transactionRepository;
+        this.recommendationMapper = recommendationMapper;
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void initAfterStartup() {
         rulesData();
+    }
+
+    @Cacheable(cacheNames = "recordsCache")
+    public RecommendationsAnswerDynamicRule getData() {
+
+        try {
+            List<UUID> allIdDynamicRules = recommendationRepository.getAllIdDynamicRules();
+            int lengthArrRules = allIdDynamicRules.size();
+            RecommendationAnswerDynamicRule[] rules = new RecommendationAnswerDynamicRule[lengthArrRules];
+
+            for (int i = 0; i < lengthArrRules; i++) {
+                UUID ruleId = allIdDynamicRules.get(i);
+                System.out.println("Processing ruleId: " + ruleId); // Or use SLF4J logger
+                Recommendation recommendation = recommendationRepository.getRecommendation(ruleId);
+                RecommendationWithDynamicRule recommendationWithDynamicRule = recommendationMapper.fromRecommendationToRecommendationWithDynamicRule().apply(recommendation);
+                RecommendationAnswerDynamicRule recommendationAnswerDynamicRule = recommendationMapper.fromRecommendationWithDynamicRuleToRecommendationAnswerDynamicRule().apply(recommendationWithDynamicRule);
+                rules[i] = recommendationAnswerDynamicRule;
+            }
+
+            return new RecommendationsAnswerDynamicRule(rules);
+        } catch (SpelEvaluationException e) {
+            System.err.println("SpEL error in getData(): " + e.getMessage());
+            throw e; // Re-throw for full stack trace
+        }
+    }
+   @CachePut(cacheNames = "recordsCache", key = "#recommendationWithDynamicRule")
+    public RecommendationAnswerDynamicRule insertData(RecommendationWithDynamicRule recommendationWithDynamicRule) {
+        Integer rowNumberId = null;
+
+        DynamicRule[] dynamicRule = recommendationWithDynamicRule.getDynamicRule();
+        List<DynamicRule> dynamicRuleList = Arrays.asList(dynamicRule);
+
+        UUID ruleUUID = recommendationWithDynamicRule.getId();
+        boolean resultInsertAndUpdateDynamicRule = recommendationRepository.insertRecommendationWithQuery(
+                ruleUUID,
+                recommendationWithDynamicRule.getName(),
+                dynamicRuleList,
+                recommendationWithDynamicRule.getText());
+
+        if (resultInsertAndUpdateDynamicRule) {
+            rowNumberId = recommendationRepository.getRowNumberId(ruleUUID);
+        }
+        return new RecommendationAnswerDynamicRule(rowNumberId, recommendationWithDynamicRule);
+    }
+    @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
+    public void deleteData(UUID ruleId) {
+        recommendationRepository.deleteRule(ruleId);
     }
 
     enum transactionType {
@@ -125,13 +186,13 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     }
 
     public List<Recommendation> handlerOverlap(UUID userUUID) {
-        return Arrays.stream(recommendation.values()).filter(rule -> rule.checkRule(userUUID,transactionRepository))
+        return Arrays.stream(recommendation.values()).filter(rule -> rule.checkRule(userUUID, transactionRepository))
                 .map(rec -> recommendationRepository.getRecommendation(getName(rec))).collect(Collectors.toList());
     }
 
     @Override
-    public RecommendationAnswer getRecommendation(UUID userUUID) {
-        return new RecommendationAnswer(userUUID.toString(), handlerOverlap(userUUID));
+    public RecommendationAnswerUser getRecommendation(UUID userUUID) {
+        return new RecommendationAnswerUser(userUUID.toString(), handlerOverlap(userUUID));
     }
 
 

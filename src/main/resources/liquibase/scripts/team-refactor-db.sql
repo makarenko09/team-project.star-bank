@@ -10,3 +10,8 @@ CREATE TABLE recommendation
     description TEXT,
     users       uuid[]
 );
+
+-- changeset mk:2
+
+ALTER TABLE recommendation
+    ADD COLUMN rules_query JSONB[]

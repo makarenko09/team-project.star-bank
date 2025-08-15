@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class RecommendationAnswer {
-    private final String user_id;
+public class RecommendationAnswerUser {
+    private final String userId;
     private final List<Recommendation> recommendations;
 }
