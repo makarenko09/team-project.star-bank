@@ -25,7 +25,6 @@ public class RecommendationRepository {
         this.jdbcTemplatePostgresql = jdbcTemplatePostgresql;
     }
 
-    //    @Cacheable(value = "recommendationsById", key = "#ruleId()")
     public Recommendation getRecommendation(UUID ruleUUID) {
         logger.info("Fetching recommendation from database for name: {}", ruleUUID);
         Recommendation recommendation = null;
@@ -84,7 +83,6 @@ public class RecommendationRepository {
         );
     }
 
-    //    @Cacheable(value = "recommendationsByName", key = "#ruleName")
     public Recommendation getRecommendation(String ruleName) {
         logger.info("Fetching recommendation from database for name: {}", ruleName);
         Recommendation recommendation = null;
@@ -139,7 +137,7 @@ public class RecommendationRepository {
         return success;
     }
 
-    //    @Cacheable(value = "recommendationsById", key = "#ruleUUID")
+
     public Integer getRowNumberId(UUID ruleUUID) {
         String searchRowRuleId = """
                 WITH incriment AS (
