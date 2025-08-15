@@ -4,6 +4,10 @@ import org.skypro.star.model.*;
 import org.skypro.star.model.mapper.RecommendationMapper;
 import org.skypro.star.repository.RecommendationRepository;
 import org.skypro.star.repository.TransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.stereotype.Service;
 
@@ -19,11 +23,16 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     private final RecommendationRepository recommendationRepository;
     private final TransactionRepository transactionRepository;
        private final RecommendationMapper recommendationMapper;
+    private final Logger log = LoggerFactory.getLogger(RecommendationRuleSetImpl.class);
 
     public RecommendationRuleSetImpl(RecommendationRepository recommendationRepository, TransactionRepository transactionRepository, RecommendationMapper recommendationMapper) {
         this.recommendationRepository = recommendationRepository;
         this.transactionRepository = transactionRepository;
         this.recommendationMapper = recommendationMapper;
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void initAfterStartup() {
         rulesData();
     }
 
@@ -47,11 +56,6 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
             System.err.println("SpEL error in getData(): " + e.getMessage());
             throw e; // Re-throw for full stack trace
         }
-    }
-
-    // TODO - to dev
-    public List<DynamicRule> getJSONB(UUID ruleUUID) {
-        return recommendationRepository.getDynamicRulesByIdFromJSONB(ruleUUID);
     }
 
     public RecommendationAnswerDynamicRule insertData(RecommendationWithDynamicRule recommendationWithDynamicRule) {

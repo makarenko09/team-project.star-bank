@@ -44,7 +44,7 @@ public class RecommendationRepository {
             String sql = "select name, id, description from recommendation where id = ?";
             recommendation = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleUUID}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("description")));
         } else {
-            throw new NoSuchObjectException("on Postgresql" + recommendation.toString());
+            throw new NoSuchObjectException("on Postgresql from Recommendation.getRecommendation (UUID)" + recommendation.toString());
         }
 
         return recommendation;
@@ -103,14 +103,14 @@ public class RecommendationRepository {
             String sql = "select name, id, description from recommendation where name = ?";
             recommendation = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleName}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("description")));
         } else {
-            throw new NoSuchObjectException("on Postgresql" + recommendation.toString());
+            throw new NoSuchObjectException("on Postgresql Recommendation.getRecommendation(String) " + recommendation.toString());
         }
 
         return recommendation;
     }
 
     public void insertRecommendationOnPostgresql(UUID ruleId, String name, @Nullable List<String> rules, String text) {
-        if (!checkRuleIdWithHandlerExc(ruleId)) {
+        if (!checkRuleId(ruleId)) {
             String sql = "INSERT INTO recommendation (id, name, rules, description, users) VALUES (?, ?, '{}', ? , '{}') ";
             jdbcTemplatePostgresql.update(sql, ruleId, name, text);
             appendRules(ruleId, rules);
@@ -165,7 +165,7 @@ public class RecommendationRepository {
                     where id = ?
                 )
                 """;
-        return jdbcTemplatePostgresql.queryForObject(searchRuleId, Boolean.class, ruleId);
+        return Boolean.TRUE.equals(jdbcTemplatePostgresql.queryForObject(searchRuleId, Boolean.class, ruleId));
     }
 
     private Map<Boolean, UUID> getRuleId(UUID ruleId) {
@@ -192,13 +192,13 @@ public class RecommendationRepository {
             return true;
         }
         if (Objects.equals(resultGetId.get(false), null)) {
-            throw new NoSuchObjectException("on Postgresql" + ruleId.toString());
+            throw new NoSuchObjectException("on Postgresql Recommendation.checkRuleIdWithHandlerExc (UUID) " + ruleId.toString());
         }
         return false;
     }
 
     private boolean appendRules(UUID ruleId, List<String> rules) {
-        if (rules == null || rules.isEmpty()) return false;
+        if (Optional.ofNullable(rules).isEmpty()) return false;
 
         String sql = """
                     UPDATE recommendation
