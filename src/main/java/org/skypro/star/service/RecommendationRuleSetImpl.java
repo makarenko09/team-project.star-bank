@@ -77,6 +77,10 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         return new RecommendationAnswerDynamicRule(rowNumberId, recommendationWithDynamicRule);
     }
 
+    public void deleteData(UUID ruleId) {
+        recommendationRepository.deleteRule(ruleId);
+    }
+
     enum transactionType {
         DEPOSIT, WITHDRAW;
     }

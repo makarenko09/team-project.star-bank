@@ -263,5 +263,12 @@ public class RecommendationRepository {
         int updates = jdbcTemplatePostgresql.update(sql, userId, rulesId);
         return updates > 0;
     }
+
+    public void deleteRule(UUID ruleId) {
+        String sql = """
+               DELETE FROM recommendation WHERE id = ?
+                """;
+        jdbcTemplatePostgresql.update(sql, ruleId);
+    }
 }
 

@@ -32,9 +32,15 @@ public class RecommendationController {
         return recommendationRuleSet.insertData(recommendationWithDynamicRule);
     }
 
+
     @GetMapping("/rule")
     public RecommendationsAnswerDynamicRule getAllDynamicRules() {
         return recommendationRuleSet.getData();
     }
 
+    @DeleteMapping
+    public void deleteDynamicRule(@RequestBody UUID ruleId) {
+        recommendationRuleSet.deleteData(ruleId);
+
+    }
 }
