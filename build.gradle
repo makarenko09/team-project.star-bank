@@ -45,10 +45,13 @@ dependencies {
     implementation 'com.h2database:h2'
     //jdbc
     implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
-    //https://mvnrepository.com/artifact/org.postgresql/postgresql
+    //Postgresql
     implementation 'org.postgresql:postgresql'
     //add to project Spring AOP (Aspect)
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+    //Telegram
+    //implementation 'com.github.pengrad:java-telegram-bot-api';
 
 }
 configurations.all {

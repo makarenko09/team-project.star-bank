@@ -1,15 +1,17 @@
 package org.skypro.star.controller;
 
-import org.skypro.star.model.*;
+import org.skypro.star.model.RecommendationAnswerDynamicRule;
+import org.skypro.star.model.RecommendationAnswerUser;
+import org.skypro.star.model.RecommendationWithDynamicRule;
+import org.skypro.star.model.RecommendationsAnswerDynamicRule;
 import org.skypro.star.service.RecommendationRuleSetImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
-@RestController("/recommendation")
+@RestController
 public class RecommendationController {
     private final RecommendationRuleSetImpl recommendationRuleSet;
 
@@ -18,10 +20,9 @@ public class RecommendationController {
 
     public RecommendationController(RecommendationRuleSetImpl recommendationRuleSet) {
         this.recommendationRuleSet = recommendationRuleSet;
-
     }
 
-    @GetMapping("/{userId}")
+    @GetMapping("/recommendation/{userId}")
     public RecommendationAnswerUser getRecommendation(@PathVariable(name = "userId") UUID userId) {
         return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
     }
@@ -34,11 +35,6 @@ public class RecommendationController {
     @GetMapping("/rule")
     public RecommendationsAnswerDynamicRule getAllDynamicRules() {
         return recommendationRuleSet.getData();
-    }
-
-    @GetMapping("/getDynamicRulesFromDynamicRecommendation")
-    public List<DynamicRule> getDynamicRules(UUID ruleUUID) {
-        return recommendationRuleSet.getJSONB(ruleUUID);
     }
 
 }

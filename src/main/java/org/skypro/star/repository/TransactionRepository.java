@@ -7,7 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-
 @Repository
 public class TransactionRepository {
     private final JdbcTemplate jdbcTemplateH2;
@@ -17,17 +16,17 @@ public class TransactionRepository {
     }
 
     public int countTransaction(UUID userUUID) {
-        String sql = "SELECT COUNT (*) from transactions where user_ID = ?";
+        String sql = "SELECT COUNT(*) FROM transactions WHERE user_ID = ?";
         Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID);
         return result != null ? result : 0;
     }
 
     public int countTransactionByProductType(UUID userUUID, String productType) {
         String sql = """
-                    SELECT COUNT(*)
-                    FROM transactions
-                    INNER JOIN products ON transactions.product_id = products.id
-                    WHERE transactions.user_ID = ? AND products.type = ?
+                SELECT COUNT(*)
+                FROM transactions
+                INNER JOIN products ON transactions.product_id = products.id
+                WHERE transactions.user_ID = ? AND products.type = ?
                 """;
         Integer result = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
         return result != null ? result : 0;
@@ -40,65 +39,61 @@ public class TransactionRepository {
                     FROM transactions
                     INNER JOIN products ON transactions.product_id = products.id
                     WHERE transactions.user_ID = ? AND products.type = ?
-                    )
+                )
                 """;
-        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
-        return result;
+        Boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
+        return result != null && result;
     }
 
-    public boolean findCurrentSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(UUID userUUID,
-                                                                                         String productType,
-                                                                                         Integer amount,
-                                                                                         Boolean equals) {
+    public boolean findCurrentSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(
+            UUID userUUID, String productType, Integer amount, Boolean equals) {
         String sql = """
-                    SELECT SUM(t.AMOUNT)
-                    FROM transactions t
-                    INNER JOIN products p ON t.product_id = p.id
-                    WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT';
+                SELECT SUM(t.AMOUNT)
+                FROM transactions t
+                INNER JOIN products p ON t.product_id = p.id
+                WHERE t.user_ID = ? AND p.type = ? AND t.type = 'DEPOSIT'
                 """;
-        int sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
-
-        if (equals) {
-            return sum >= amount;
-        } else {
-            return sum > amount;
-        }
+        Integer sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
+        sum = sum != null ? sum : 0;
+        return equals ? sum >= amount : sum > amount;
     }
 
-    public boolean compareCurrentSumDepositsToAptSumByProductTypeAndAmountAndAnyOperator(UUID userUUID,
-                                                                                         String productType,
-                                                                                         Integer amount,
-                                                                                         String operator) {
+    public boolean compareCurrentSumDepositsToAptSumByProductTypeAndAmountAndAnyOperator(
+            UUID userUUID, String productType, Integer amount, String operator) {
         List<String> correctOperator = Arrays.asList(">", "<", "=", ">=", "<=");
+        if (!correctOperator.contains(operator)) {
+            throw new NoValidValueException(operator);
+        }
+
         String sql = """
-                        select Sum(t.AMOUNT)
-                        FROM transactions t
-                            INNER JOIN products p ON t.product_id = p.id
-                        WHERE t.user_ID = ? AND p.type = ? and t.type = 'DEPOSIT'
-                
+                SELECT SUM(t.AMOUNT)
+                FROM transactions t
+                INNER JOIN products p ON t.product_id = p.id
+                WHERE t.user_ID = ? AND p.type = ? AND t.type = 'DEPOSIT'
                 """;
-        int sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType, amount);
+        Integer sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
+        sum = sum != null ? sum : 0;
+
         return switch (operator) {
             case ">" -> sum > amount;
             case "<" -> sum < amount;
-            case "=" -> sum == amount;
+            case "=" -> sum.equals(amount);
             case ">=" -> sum >= amount;
             case "<=" -> sum <= amount;
-            default -> throw new NoValidValueException(operator.toString());
+            default -> throw new NoValidValueException(operator);
         };
     }
 
     public boolean findSumMoreThatByTransactionTypeAndProductType(UUID userUUID, String productType) {
         String sql = """
-                    SELECT
+                SELECT
                     SUM(CASE WHEN t.type = 'DEPOSIT' THEN t.amount ELSE 0 END) >
                     SUM(CASE WHEN t.type = 'WITHDRAWAL' THEN t.amount ELSE 0 END)
-                    from transactions t
-                    INNER JOIN products p ON t.product_id = p.id
-                    where t.user_ID = ? AND p.type = ?
+                FROM transactions t
+                INNER JOIN products p ON t.product_id = p.id
+                WHERE t.user_ID = ? AND p.type = ?
                 """;
-        boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
-        return result;
+        Boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
+        return result != null && result;
     }
-
 }
