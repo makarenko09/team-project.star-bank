@@ -261,5 +261,15 @@ public class RecommendationRepository {
                 """;
         jdbcTemplatePostgresql.update(sql, ruleId);
     }
+
+    public Integer countTriggerProcessingUserGetRecommendation(UUID userUUID) {
+
+        //Todo - write insert and take increment
+String sql = """
+        update recommendation set user_trigger_incremental_load = ? where id = ?
+        """;
+jdbcTemplatePostgresql.update(sql, userUUID);
+return null;
+    }
 }
 

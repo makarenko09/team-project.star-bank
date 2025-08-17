@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.skypro.star.service.RecommendationRuleSetImpl.recommendation.getName;
 
@@ -192,7 +193,15 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
 
     @Override
     public RecommendationAnswerUser getRecommendation(UUID userUUID) {
-        return new RecommendationAnswerUser(userUUID.toString(), handlerOverlap(userUUID));
+        recommendationRepository.countTriggerProcessingUserGetRecommendation(userUUID);
+        RecommendationAnswerUser recommendationAnswerUser = new RecommendationAnswerUser(userUUID.toString(), handlerOverlap(userUUID));
+
+        List<Recommendation> recommendations = recommendationAnswerUser.getRecommendations();
+        Stream<Recommendation> stream = recommendations.stream();
+        // Todo - write editor increment when get rule for user
+        stream.map(rec -> rec.getId())
+                .map(uuid -> recommendationRepository.countTriggerProcessingUserGetRecommendation(userUUID));
+        return null;
     }
 
 

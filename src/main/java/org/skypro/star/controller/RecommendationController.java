@@ -26,6 +26,9 @@ public class RecommendationController {
     public RecommendationAnswerUser getRecommendation(@PathVariable(name = "userId") UUID userId) {
         return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
     }
+    //FIXME - write transfer increment with java.star.model.stat
+    //  @GetMapping("/rule/stats")
+    //  public
 
     @PostMapping("/rule")
     public RecommendationAnswerDynamicRule createDynamicRule(@RequestBody RecommendationWithDynamicRule recommendationWithDynamicRule) {
