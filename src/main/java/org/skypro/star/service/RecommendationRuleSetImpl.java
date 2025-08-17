@@ -7,6 +7,9 @@ import org.skypro.star.repository.TransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.event.EventListener;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.stereotype.Service;
@@ -36,7 +39,9 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         rulesData();
     }
 
+    @Cacheable(cacheNames = "recordsCache")
     public RecommendationsAnswerDynamicRule getData() {
+
         try {
             List<UUID> allIdDynamicRules = recommendationRepository.getAllIdDynamicRules();
             int lengthArrRules = allIdDynamicRules.size();
@@ -53,11 +58,11 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
 
             return new RecommendationsAnswerDynamicRule(rules);
         } catch (SpelEvaluationException e) {
-            System.err.println("SpEL error in getData(): " + e.getMessage());
-            throw e; // Re-throw for full stack trace
+            log.error("SpEL error in getData({}): ", e.getMessage());
+            throw e;
         }
     }
-
+   @CachePut(cacheNames = "recordsCache", key = "#recommendationWithDynamicRule")
     public RecommendationAnswerDynamicRule insertData(RecommendationWithDynamicRule recommendationWithDynamicRule) {
         Integer rowNumberId = null;
 
@@ -75,6 +80,10 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
             rowNumberId = recommendationRepository.getRowNumberId(ruleUUID);
         }
         return new RecommendationAnswerDynamicRule(rowNumberId, recommendationWithDynamicRule);
+    }
+    @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
+    public void deleteData(UUID ruleId) {
+        recommendationRepository.deleteRule(ruleId);
     }
 
     enum transactionType {

@@ -11,4 +11,10 @@ public class Recommendation {
     private final String name;
     private final UUID id;
     private final String text;
+
+    @Override
+    public String toString() {
+        return "\n \n" + name + '\n' +
+                text + '\n';
+    }
 }

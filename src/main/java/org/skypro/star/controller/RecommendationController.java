@@ -32,9 +32,18 @@ public class RecommendationController {
         return recommendationRuleSet.insertData(recommendationWithDynamicRule);
     }
 
+
     @GetMapping("/rule")
     public RecommendationsAnswerDynamicRule getAllDynamicRules() {
-        return recommendationRuleSet.getData();
+        long start = System.currentTimeMillis();
+        RecommendationsAnswerDynamicRule data = recommendationRuleSet.getData();
+        long duration = System.currentTimeMillis() - start;
+        logger.info("⏱ calling (parent) method executed in {} ms", duration);
+        return data;
     }
 
+    @DeleteMapping("/rule")
+    public void deleteDynamicRule(@RequestBody UUID ruleId) {
+        recommendationRuleSet.deleteData(ruleId);
+    }
 }

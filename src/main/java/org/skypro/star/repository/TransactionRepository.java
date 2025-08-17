@@ -1,5 +1,6 @@
 package org.skypro.star.repository;
 
+import org.skypro.star.exception.NoValidValueException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+
 @Repository
 public class TransactionRepository {
     private final JdbcTemplate jdbcTemplateH2;
@@ -95,5 +97,53 @@ public class TransactionRepository {
                 """;
         Boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
         return result != null && result;
+    }
+
+    public String[] findFullNameByUsername(String username) {
+        Boolean checkRuleName = checkUserId(username);
+        String[] fullName = new String[2];
+
+        if (checkRuleName) {
+            String sql = """
+                    select FIRST_NAME,LAST_NAME 
+                    from USERS
+                    where USERNAME = ?
+                    """;
+            fullName = jdbcTemplateH2.queryForObject(sql, new Object[]{username}, (rs, rowNum) -> {
+                String firstName = rs.getString("first_name");
+                String lastName = rs.getString("last_name");
+
+                return new String[]{firstName, lastName};
+            });
+        }
+        return fullName;
+    }
+
+    private Boolean checkUserId(String username) {
+        String searchRuleId = """
+                SELECT EXISTS(
+                    select id
+                    from USERS
+                    where USERNAME = ?
+                )
+                """;
+        return jdbcTemplateH2.queryForObject(searchRuleId, new Object[]{username}, Boolean.class);
+    }
+
+    public UUID findUserUUIDByUsername(String username) {
+        Boolean checkRuleName = checkUserId(username);
+
+        UUID id = null;
+        if (checkRuleName) {
+
+                String getUserId = """
+                    select id
+                    from USERS
+                    where USERNAME = ?
+                    """;
+                id = jdbcTemplateH2.queryForObject(getUserId, new Object[]{username}, (rs, rowNum) -> rs.getObject("id", UUID.class));
+
+        }
+        return id;
     }
 }

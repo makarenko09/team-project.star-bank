@@ -2,6 +2,8 @@ package org.skypro.star.repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.skypro.star.exception.NoSuchObjectException;
+import org.skypro.star.exception.NoValidValueException;
 import org.skypro.star.model.DynamicRule;
 import org.skypro.star.model.Recommendation;
 import org.slf4j.Logger;
@@ -25,21 +27,11 @@ public class RecommendationRepository {
         this.jdbcTemplatePostgresql = jdbcTemplatePostgresql;
     }
 
-    //    @Cacheable(value = "recommendationsById", key = "#ruleId()")
     public Recommendation getRecommendation(UUID ruleUUID) {
         logger.info("Fetching recommendation from database for name: {}", ruleUUID);
         Recommendation recommendation = null;
 
-        String searchRuleId = """
-                SELECT EXISTS(
-                    select 1
-                    from recommendation
-                    where id = ?
-                )
-                """;
-        Boolean checkRuleName = jdbcTemplatePostgresql.queryForObject(searchRuleId, new Object[]{ruleUUID}, Boolean.class);
-
-
+        boolean checkRuleName = checkRuleId(ruleUUID);
         if (checkRuleName) {
             String sql = "select name, id, description from recommendation where id = ?";
             recommendation = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleUUID}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("description")));
@@ -84,7 +76,6 @@ public class RecommendationRepository {
         );
     }
 
-    //    @Cacheable(value = "recommendationsByName", key = "#ruleName")
     public Recommendation getRecommendation(String ruleName) {
         logger.info("Fetching recommendation from database for name: {}", ruleName);
         Recommendation recommendation = null;
@@ -139,7 +130,7 @@ public class RecommendationRepository {
         return success;
     }
 
-    //    @Cacheable(value = "recommendationsById", key = "#ruleUUID")
+
     public Integer getRowNumberId(UUID ruleUUID) {
         String searchRowRuleId = """
                 WITH incriment AS (
@@ -262,6 +253,13 @@ public class RecommendationRepository {
                 """;
         int updates = jdbcTemplatePostgresql.update(sql, userId, rulesId);
         return updates > 0;
+    }
+
+    public void deleteRule(UUID ruleId) {
+        String sql = """
+               DELETE FROM recommendation WHERE id = ?
+                """;
+        jdbcTemplatePostgresql.update(sql, ruleId);
     }
 }
 
