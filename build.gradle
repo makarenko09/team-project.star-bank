@@ -38,6 +38,15 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:2.8.6'
 
+    //Telegram
+    implementation 'org.telegram:telegrambots-spring-boot-starter:6.7.0'
+    implementation 'org.telegram:telegrambots-abilities:6.7.0'
+//     Для PostConstruct в Spring Boot 3
+//    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+    //cache
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+
     //DB
     //liquibase
     implementation 'org.liquibase:liquibase-core'
@@ -50,8 +59,6 @@ dependencies {
     //add to project Spring AOP (Aspect)
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
-    //Telegram
-    //implementation 'com.github.pengrad:java-telegram-bot-api';
 
 }
 configurations.all {
