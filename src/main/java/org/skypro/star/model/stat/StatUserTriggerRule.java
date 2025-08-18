@@ -8,9 +8,9 @@ import java.util.UUID;
 
 @Data
 @AllArgsConstructor
-public class StatsUserTriggerRule {
+public class StatUserTriggerRule {
     @JsonProperty("rule_id")
     private final UUID uuid;
     @JsonProperty("count")
-    private final Integer incrementTrigger;
+    private final Integer incrementingTrigger;
 }

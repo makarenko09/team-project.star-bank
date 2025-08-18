@@ -4,6 +4,7 @@ import org.skypro.star.model.RecommendationAnswerDynamicRule;
 import org.skypro.star.model.RecommendationAnswerUser;
 import org.skypro.star.model.RecommendationWithDynamicRule;
 import org.skypro.star.model.RecommendationsAnswerDynamicRule;
+import org.skypro.star.model.stat.StatsUsageGetRecommendationByUser;
 import org.skypro.star.service.RecommendationRuleSetImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,8 +28,10 @@ public class RecommendationController {
         return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
     }
     //FIXME - write transfer increment with java.star.model.stat
-    //  @GetMapping("/rule/stats")
-    //  public
+    @GetMapping("/rule/stats")
+    public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
+                return recommendationRuleSet.getStatsUsageGetRecommendationByUser();
+    }
 
     @PostMapping("/rule")
     public RecommendationAnswerDynamicRule createDynamicRule(@RequestBody RecommendationWithDynamicRule recommendationWithDynamicRule) {
