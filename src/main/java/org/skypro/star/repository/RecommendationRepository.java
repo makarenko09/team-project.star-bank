@@ -275,60 +275,20 @@ public class RecommendationRepository {
         if (updated == 0) {
             logger.warn("No record found for ruleId: {}. Increment skipped.", ruleId);
         }
-//
-//        Integer trigger = 1;
-//        boolean triggerIncrementalIsPresent = checkTriggerIncremental(ruleId);
-//        if (!triggerIncrementalIsPresent) {
-//            setValueOfIncrementTrigger(ruleId, trigger);
-//            return;
-//        }
-//
-//        trigger = getCountTriggerProcessingUserGetRecommendation(ruleId);
-//        trigger += 1;
-//        setValueOfIncrementTrigger(ruleId, trigger);
-////
-////        String setUserIncrementFromTrigger = """
-////        update recommendation set user_trigger_incremental_load = ? where id = ?
-////        """;
-////        jdbcTemplatePostgresql.update(setUserIncrementFromTrigger, trigger, ruleId);
-    }
-
-    private void setValueOfIncrementTrigger(UUID ruleId, int i) {
-        String setUserIncrementFromTrigger = """
-                      INSERT INTO recommendation (id, user_trigger_incremental_load)
-                                                                                                         VALUES (?, 1)
-        """;
-        jdbcTemplatePostgresql.update(setUserIncrementFromTrigger, i, ruleId);
-
-    }
-
-
-    private boolean checkTriggerIncremental(UUID ruleId) {
-        String searchTrigger = """
-                 SELECT EXISTS(
-                    select user_trigger_incremental_load
-                    from recommendation
-                    where id = ?
-                )
-                """;
-        Boolean result = jdbcTemplatePostgresql.queryForObject(searchTrigger, new Object[]{ruleId}, Boolean.class);
-        return result != null && result;
-
-//        Boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
-//        return result != null && result;
     }
 
     public Integer getCountTriggerProcessingUserGetRecommendation(UUID ruleId) {
         String sql = """
-        SELECT COALESCE(user_trigger_incremental_load, 0) 
-        FROM recommendation 
-        WHERE id = ?
-        """;
+                SELECT COALESCE(user_trigger_incremental_load, 0) 
+                FROM recommendation 
+                WHERE id = ?
+                """;
         try {
             return jdbcTemplatePostgresql.queryForObject(sql, Integer.class, ruleId);
         } catch (EmptyResultDataAccessException e) {
             logger.warn("Record not found for ruleId: {}", ruleId);
             return 0;
         }
-}}
+    }
+}
 

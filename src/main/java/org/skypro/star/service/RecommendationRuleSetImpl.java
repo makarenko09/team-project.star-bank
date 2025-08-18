@@ -84,17 +84,17 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         }
         return new RecommendationAnswerDynamicRule(rowNumberId, recommendationWithDynamicRule);
     }
+
     @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
     public void deleteData(UUID ruleId) {
         recommendationRepository.deleteRule(ruleId);
     }
 
     public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
-        StatUserTriggerRule[] array = recommendationRepository.getAllIdDynamicRules().stream()
+        return new StatsUsageGetRecommendationByUser(recommendationRepository.getAllIdDynamicRules().stream()
                 .map(ruleId -> new StatUserTriggerRule(ruleId, recommendationRepository.getCountTriggerProcessingUserGetRecommendation(ruleId))
                 )
-                .toArray(StatUserTriggerRule[]::new);
-        return new StatsUsageGetRecommendationByUser(array);
+                .toArray(StatUserTriggerRule[]::new));
     }
 
     enum transactionType {
@@ -208,14 +208,9 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         log.info("Start incremental recommendation user answer: {}", recommendationAnswerUser);
         List<Recommendation> recommendations = recommendationAnswerUser.getRecommendations();
         log.info("recommendations = {}", recommendations);
-//        for (Recommendation recommendation : recommendations) {
-//            UUID id = recommendation.getId();
-//            log.info("id = {}", id);
         try {
             recommendationAnswerUser.getRecommendations().stream().map(Recommendation::getId)
                     .forEach(recommendationRepository::incrementCountTriggerProcessingUserGetRecommendation);
-
-//                recommendationRepository.incrementCountTriggerProcessingUserGetRecommendation(id);
         } catch (EmptyResultDataAccessException e) {
             log.error("EmptyResultDataAccessException ({}) in this incremental recommendation user answer: {}", e.getMessage(), recommendationAnswerUser);
             throw e;
