@@ -11,6 +11,8 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
+import org.skypro.star.model.RuleStatistic;
+import java.util.List;
 
 import java.sql.Array;
 import java.util.*;
@@ -23,6 +25,77 @@ public class RecommendationRepository {
 
     public RecommendationRepository(@Qualifier("postgresqlJdbcTemplate") JdbcTemplate jdbcTemplatePostgresql) {
         this.jdbcTemplatePostgresql = jdbcTemplatePostgresql;
+    }
+
+    //Z Создаем таблицу для статистики (должен быть вызван при инициализации приложения)
+    public void createStatsTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS rule_stats (
+                rule_id UUID PRIMARY KEY REFERENCES recommendation(id) ON DELETE CASCADE,
+                count INTEGER DEFAULT 0
+            )
+            """;
+        try {
+            jdbcTemplatePostgresql.execute(sql);
+            logger.info("Rule stats table created successfully");
+        } catch (Exception e) {
+            logger.error("Failed to create rule stats table", e);
+            throw new RuntimeException("Failed to create rule stats table", e);
+        }
+    }
+
+    //Z Увеличиваем счетчик срабатывания правила
+    public void incrementRuleStat(UUID ruleId) {
+        String sql = """
+            INSERT INTO rule_stats (rule_id, count) 
+            VALUES (?, 1)
+            ON CONFLICT (rule_id) 
+            DO UPDATE SET count = rule_stats.count + 1
+            """;
+        try {
+            int updatedRows = jdbcTemplatePostgresql.update(sql, ruleId);
+            if (updatedRows > 0) {
+                logger.debug("Incremented stat counter for rule: {}", ruleId);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to increment stat counter for rule: {}", ruleId, e);
+            throw new RuntimeException("Failed to increment stat counter", e);
+        }
+    }
+
+    // Z Получаем статистику по всем правилам
+    public List<RuleStatistic> getAllRuleStats() {
+        String sql = """
+            SELECT r.id as rule_id, COALESCE(rs.count, 0) as count
+            FROM recommendation r
+            LEFT JOIN rule_stats rs ON r.id = rs.rule_id
+            ORDER BY r.id
+            """;
+        try {
+            return jdbcTemplatePostgresql.query(sql, (rs, rowNum) ->
+                    new RuleStatistic(
+                            rs.getObject("rule_id", UUID.class),
+                            rs.getInt("count")
+                    )
+            );
+        } catch (Exception e) {
+            logger.error("Failed to get all rule statistics", e);
+            throw new RuntimeException("Failed to get rule statistics", e);
+        }
+    }
+
+    // Z Получаем статистику по конкретному правилу
+    public Integer getRuleStat(UUID ruleId) {
+        String sql = "SELECT count FROM rule_stats WHERE rule_id = ?";
+        try {
+            return jdbcTemplatePostgresql.queryForObject(sql, Integer.class, ruleId);
+        } catch (EmptyResultDataAccessException e) {
+            logger.debug("No statistics found for rule: {}, returning 0", ruleId);
+            return 0;
+        } catch (Exception e) {
+            logger.error("Failed to get statistics for rule: {}", ruleId, e);
+            throw new RuntimeException("Failed to get rule statistic", e);
+        }
     }
 
     //    @Cacheable(value = "recommendationsById", key = "#ruleId()")

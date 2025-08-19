@@ -22,7 +22,7 @@ import static org.skypro.star.service.RecommendationRuleSetImpl.recommendation.g
 public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     private final RecommendationRepository recommendationRepository;
     private final TransactionRepository transactionRepository;
-       private final RecommendationMapper recommendationMapper;
+    private final RecommendationMapper recommendationMapper;
     private final Logger log = LoggerFactory.getLogger(RecommendationRuleSetImpl.class);
 
     public RecommendationRuleSetImpl(RecommendationRepository recommendationRepository, TransactionRepository transactionRepository, RecommendationMapper recommendationMapper) {
@@ -34,6 +34,49 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     @EventListener(ApplicationReadyEvent.class)
     public void initAfterStartup() {
         rulesData();
+        initStatsTable();
+    }
+
+    private void initStatsTable() {
+        try {
+            recommendationRepository.createStatsTable();
+            log.info("Rule stats table initialized successfully");
+        } catch (Exception e) {
+            log.error("Failed to initialize stats table", e);
+        }
+    }
+
+    public List<RuleStatistic> getRuleStats() {
+        return recommendationRepository.getAllRuleStats();
+    }
+
+    public List<Recommendation> handlerOverlap(UUID userUUID) {
+        return Arrays.stream(recommendation.values())
+                .filter(rule -> {
+                    boolean matches = rule.checkRule(userUUID, transactionRepository);
+                    // Учет статистики
+                    if (matches) {
+                        // Увеличиваем счетчик срабатывания правила
+                        UUID ruleId = getRuleIdByName(getName(rule));
+                        if (ruleId != null) {
+                            recommendationRepository.incrementRuleStat(ruleId);
+                            log.debug("Incremented stat counter for rule: {} (user: {})", ruleId, userUUID);
+                        }
+                    }
+                    return matches;
+                })
+                .map(rec -> recommendationRepository.getRecommendation(getName(rec)))
+                .collect(Collectors.toList());
+    }
+
+    private UUID getRuleIdByName(String ruleName) {
+        try {
+            Recommendation rec = recommendationRepository.getRecommendation(ruleName);
+            return rec.getId();
+        } catch (Exception e) {
+            log.warn("Rule not found by name: {}", ruleName);
+            return null;
+        }
     }
 
     public RecommendationsAnswerDynamicRule getData() {
@@ -44,7 +87,7 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
 
             for (int i = 0; i < lengthArrRules; i++) {
                 UUID ruleId = allIdDynamicRules.get(i);
-                System.out.println("Processing ruleId: " + ruleId); // Or use SLF4J logger
+                System.out.println("Processing ruleId: " + ruleId);
                 Recommendation recommendation = recommendationRepository.getRecommendation(ruleId);
                 RecommendationWithDynamicRule recommendationWithDynamicRule = recommendationMapper.fromRecommendationToRecommendationWithDynamicRule().apply(recommendation);
                 RecommendationAnswerDynamicRule recommendationAnswerDynamicRule = recommendationMapper.fromRecommendationWithDynamicRuleToRecommendationAnswerDynamicRule().apply(recommendationWithDynamicRule);
@@ -54,7 +97,7 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
             return new RecommendationsAnswerDynamicRule(rules);
         } catch (SpelEvaluationException e) {
             System.err.println("SpEL error in getData(): " + e.getMessage());
-            throw e; // Re-throw for full stack trace
+            throw e;
         }
     }
 
@@ -138,7 +181,6 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
                 case justCredit -> "Простой кредит";
             };
         }
-
     }
 
     public void rulesData() {
@@ -180,23 +222,8 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
                 """);
     }
 
-    public List<Recommendation> handlerOverlap(UUID userUUID) {
-        return Arrays.stream(recommendation.values()).filter(rule -> rule.checkRule(userUUID, transactionRepository))
-                .map(rec -> recommendationRepository.getRecommendation(getName(rec))).collect(Collectors.toList());
-    }
-
     @Override
     public RecommendationAnswerUser getRecommendation(UUID userUUID) {
         return new RecommendationAnswerUser(userUUID.toString(), handlerOverlap(userUUID));
     }
-
-
 }
-
-
-
-
-
-
-
-

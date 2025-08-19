@@ -50,8 +50,9 @@ dependencies {
     //add to project Spring AOP (Aspect)
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
-    //Telegram
-    //implementation 'com.github.pengrad:java-telegram-bot-api';
+    //TGBotZotov
+    implementation 'com.github.pengrad:java-telegram-bot-api:7.9.0'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
 }
 configurations.all {
@@ -59,4 +60,7 @@ configurations.all {
 }
 tasks.named('test') {
     useJUnitPlatform()
+}
+springBoot {
+    buildInfo()
 }
