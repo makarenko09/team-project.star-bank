@@ -8,6 +8,8 @@ import org.skypro.star.model.stat.StatsUsageGetRecommendationByUser;
 import org.skypro.star.service.RecommendationRuleSetImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -16,11 +18,13 @@ import java.util.UUID;
 public class RecommendationController {
     private final RecommendationRuleSetImpl recommendationRuleSet;
 
+    private final CacheManager cacheManager;
     private final Logger logger = LoggerFactory.getLogger(RecommendationController.class);
 
 
-    public RecommendationController(RecommendationRuleSetImpl recommendationRuleSet) {
+    public RecommendationController(RecommendationRuleSetImpl recommendationRuleSet, CacheManager cacheManager) {
         this.recommendationRuleSet = recommendationRuleSet;
+        this.cacheManager = cacheManager;
     }
 
     @GetMapping("/recommendation/{userId}")
@@ -31,6 +35,13 @@ public class RecommendationController {
     @GetMapping("/rule/stats")
     public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
                 return recommendationRuleSet.getStatsUsageGetRecommendationByUser();
+    }
+
+    @PostMapping("/management/clear-caches")
+    public void clearAllCaches() {
+        cacheManager.getCacheNames().forEach(cacheName ->
+                cacheManager.getCache(cacheName).clear()
+        );
     }
 
     @PostMapping("/rule")
