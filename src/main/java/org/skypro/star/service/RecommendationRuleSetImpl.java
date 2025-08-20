@@ -84,6 +84,10 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         }
         return new RecommendationAnswerDynamicRule(rowNumberId, recommendationWithDynamicRule);
     }
+    @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
+    public void deleteData(UUID ruleId) {
+        recommendationRepository.deleteRule(ruleId);
+    }
 
     @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
     public void deleteData(UUID ruleId) {

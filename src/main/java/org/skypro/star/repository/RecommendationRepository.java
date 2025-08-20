@@ -262,6 +262,7 @@ public class RecommendationRepository {
         jdbcTemplatePostgresql.update(sql, ruleId);
     }
 
+
     public void incrementCountTriggerProcessingUserGetRecommendation(UUID ruleId) {
         String updateSql = """
         UPDATE recommendation 
@@ -290,5 +291,6 @@ public class RecommendationRepository {
             return 0;
         }
     }
+
 }
 

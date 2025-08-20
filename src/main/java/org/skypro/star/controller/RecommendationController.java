@@ -73,5 +73,6 @@ public class RecommendationController {
     @DeleteMapping("/rule")
     public void deleteDynamicRule(@RequestBody UUID ruleId) {
         recommendationRuleSet.deleteData(ruleId);
+
     }
 }
