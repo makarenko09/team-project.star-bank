@@ -2,6 +2,8 @@ package org.skypro.star.service;
 
 import org.skypro.star.model.*;
 import org.skypro.star.model.mapper.RecommendationMapper;
+import org.skypro.star.model.stat.StatUserTriggerRule;
+import org.skypro.star.model.stat.StatsUsageGetRecommendationByUser;
 import org.skypro.star.repository.RecommendationRepository;
 import org.skypro.star.repository.TransactionRepository;
 import org.slf4j.Logger;
@@ -11,6 +13,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.event.EventListener;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.stereotype.Service;
 
@@ -58,8 +61,8 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
 
             return new RecommendationsAnswerDynamicRule(rules);
         } catch (SpelEvaluationException e) {
-            System.err.println("SpEL error in getData(): " + e.getMessage());
-            throw e; // Re-throw for full stack trace
+            log.error("SpEL error in getData({}): ", e.getMessage());
+            throw e;
         }
     }
    @CachePut(cacheNames = "recordsCache", key = "#recommendationWithDynamicRule")
@@ -84,6 +87,18 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
     public void deleteData(UUID ruleId) {
         recommendationRepository.deleteRule(ruleId);
+    }
+
+    @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
+    public void deleteData(UUID ruleId) {
+        recommendationRepository.deleteRule(ruleId);
+    }
+
+    public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
+        return new StatsUsageGetRecommendationByUser(recommendationRepository.getAllIdDynamicRules().stream()
+                .map(ruleId -> new StatUserTriggerRule(ruleId, recommendationRepository.getCountTriggerProcessingUserGetRecommendation(ruleId))
+                )
+                .toArray(StatUserTriggerRule[]::new));
     }
 
     enum transactionType {
@@ -192,7 +207,21 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
 
     @Override
     public RecommendationAnswerUser getRecommendation(UUID userUUID) {
-        return new RecommendationAnswerUser(userUUID.toString(), handlerOverlap(userUUID));
+        RecommendationAnswerUser recommendationAnswerUser = new RecommendationAnswerUser(userUUID.toString(), handlerOverlap(userUUID));
+
+        log.info("Start incremental recommendation user answer: {}", recommendationAnswerUser);
+        List<Recommendation> recommendations = recommendationAnswerUser.getRecommendations();
+        log.info("recommendations = {}", recommendations);
+        try {
+            recommendationAnswerUser.getRecommendations().stream().map(Recommendation::getId)
+                    .forEach(recommendationRepository::incrementCountTriggerProcessingUserGetRecommendation);
+        } catch (EmptyResultDataAccessException e) {
+            log.error("EmptyResultDataAccessException ({}) in this incremental recommendation user answer: {}", e.getMessage(), recommendationAnswerUser);
+            throw e;
+        }
+
+
+        return recommendationAnswerUser;
     }
 
 

@@ -4,27 +4,55 @@ import org.skypro.star.model.RecommendationAnswerDynamicRule;
 import org.skypro.star.model.RecommendationAnswerUser;
 import org.skypro.star.model.RecommendationWithDynamicRule;
 import org.skypro.star.model.RecommendationsAnswerDynamicRule;
+import org.skypro.star.model.stat.StatsUsageGetRecommendationByUser;
 import org.skypro.star.service.RecommendationRuleSetImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.cache.CacheManager;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 public class RecommendationController {
     private final RecommendationRuleSetImpl recommendationRuleSet;
 
+    private final CacheManager cacheManager;
     private final Logger logger = LoggerFactory.getLogger(RecommendationController.class);
 
 
-    public RecommendationController(RecommendationRuleSetImpl recommendationRuleSet) {
+    public RecommendationController(RecommendationRuleSetImpl recommendationRuleSet, CacheManager cacheManager) {
         this.recommendationRuleSet = recommendationRuleSet;
+        this.cacheManager = cacheManager;
     }
+    private BuildProperties buildProperties;
 
+    @GetMapping("/management/info")
+    public Map<String, String> getInfo() {
+        Map<String, String> info = new HashMap<>();
+        info.put("name", buildProperties.getName());
+        info.put("version", buildProperties.getVersion());
+        return info;
+    }
     @GetMapping("/recommendation/{userId}")
     public RecommendationAnswerUser getRecommendation(@PathVariable(name = "userId") UUID userId) {
         return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
+    }
+
+    @GetMapping("/rule/stats")
+    public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
+                return recommendationRuleSet.getStatsUsageGetRecommendationByUser();
+    }
+
+    @PostMapping("/management/clear-caches")
+    public void clearAllCaches() {
+        cacheManager.getCacheNames().forEach(cacheName ->
+                cacheManager.getCache(cacheName).clear()
+        );
     }
 
     @PostMapping("/rule")
@@ -42,7 +70,7 @@ public class RecommendationController {
         return data;
     }
 
-    @DeleteMapping
+    @DeleteMapping("/rule")
     public void deleteDynamicRule(@RequestBody UUID ruleId) {
         recommendationRuleSet.deleteData(ruleId);
 

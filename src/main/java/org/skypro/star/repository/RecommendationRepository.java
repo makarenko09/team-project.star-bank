@@ -2,6 +2,8 @@ package org.skypro.star.repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.skypro.star.exception.NoSuchObjectException;
+import org.skypro.star.exception.NoValidValueException;
 import org.skypro.star.model.DynamicRule;
 import org.skypro.star.model.Recommendation;
 import org.slf4j.Logger;
@@ -29,16 +31,7 @@ public class RecommendationRepository {
         logger.info("Fetching recommendation from database for name: {}", ruleUUID);
         Recommendation recommendation = null;
 
-        String searchRuleId = """
-                SELECT EXISTS(
-                    select 1
-                    from recommendation
-                    where id = ?
-                )
-                """;
-        Boolean checkRuleName = jdbcTemplatePostgresql.queryForObject(searchRuleId, new Object[]{ruleUUID}, Boolean.class);
-
-
+        boolean checkRuleName = checkRuleId(ruleUUID);
         if (checkRuleName) {
             String sql = "select name, id, description from recommendation where id = ?";
             recommendation = jdbcTemplatePostgresql.queryForObject(sql, new Object[]{ruleUUID}, (rs, rowNum) -> new Recommendation(rs.getString("name"), rs.getObject("id", UUID.class), rs.getString("description")));
@@ -268,5 +261,36 @@ public class RecommendationRepository {
                 """;
         jdbcTemplatePostgresql.update(sql, ruleId);
     }
+
+
+    public void incrementCountTriggerProcessingUserGetRecommendation(UUID ruleId) {
+        String updateSql = """
+        UPDATE recommendation 
+        SET user_trigger_incremental_load = 
+            COALESCE(user_trigger_incremental_load, 0) + 1
+        WHERE id = ?
+        """;
+
+        int updated = jdbcTemplatePostgresql.update(updateSql, ruleId);
+
+        if (updated == 0) {
+            logger.warn("No record found for ruleId: {}. Increment skipped.", ruleId);
+        }
+    }
+
+    public Integer getCountTriggerProcessingUserGetRecommendation(UUID ruleId) {
+        String sql = """
+                SELECT COALESCE(user_trigger_incremental_load, 0) 
+                FROM recommendation 
+                WHERE id = ?
+                """;
+        try {
+            return jdbcTemplatePostgresql.queryForObject(sql, Integer.class, ruleId);
+        } catch (EmptyResultDataAccessException e) {
+            logger.warn("Record not found for ruleId: {}", ruleId);
+            return 0;
+        }
+    }
+
 }
 

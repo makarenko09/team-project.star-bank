@@ -10,4 +10,9 @@ import java.util.List;
 public class RecommendationAnswerUser {
     private final String userId;
     private final List<Recommendation> recommendations;
+
+    @Override
+    public String toString() {
+        return "\n" + recommendations + "\n";
+    }
 }
