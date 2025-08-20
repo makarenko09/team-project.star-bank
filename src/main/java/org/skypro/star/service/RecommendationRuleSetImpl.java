@@ -89,11 +89,6 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         recommendationRepository.deleteRule(ruleId);
     }
 
-    @CacheEvict(cacheNames = "recordsCache", key = "#ruleId")
-    public void deleteData(UUID ruleId) {
-        recommendationRepository.deleteRule(ruleId);
-    }
-
     public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
         return new StatsUsageGetRecommendationByUser(recommendationRepository.getAllIdDynamicRules().stream()
                 .map(ruleId -> new StatUserTriggerRule(ruleId, recommendationRepository.getCountTriggerProcessingUserGetRecommendation(ruleId))
