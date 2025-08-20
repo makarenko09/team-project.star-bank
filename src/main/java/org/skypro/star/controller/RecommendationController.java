@@ -9,9 +9,12 @@ import org.skypro.star.service.RecommendationRuleSetImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.cache.CacheManager;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -26,12 +29,20 @@ public class RecommendationController {
         this.recommendationRuleSet = recommendationRuleSet;
         this.cacheManager = cacheManager;
     }
+    private BuildProperties buildProperties;
 
+    @GetMapping("/management/info")
+    public Map<String, String> getInfo() {
+        Map<String, String> info = new HashMap<>();
+        info.put("name", buildProperties.getName());
+        info.put("version", buildProperties.getVersion());
+        return info;
+    }
     @GetMapping("/recommendation/{userId}")
     public RecommendationAnswerUser getRecommendation(@PathVariable(name = "userId") UUID userId) {
         return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
     }
-    //FIXME - write transfer increment with java.star.model.stat
+
     @GetMapping("/rule/stats")
     public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
                 return recommendationRuleSet.getStatsUsageGetRecommendationByUser();
