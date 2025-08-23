@@ -1,25 +1,27 @@
 package org.skypro.star.controller;
 
-import org.skypro.star.model.RuleStatistic;
 import org.skypro.star.service.RecommendationRuleSetImpl;
+import org.springframework.boot.actuate.info.InfoEndpoint;
 import org.springframework.cache.CacheManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/management")
 public class ManagementController {
 
-    private final RecommendationRuleSetImpl recommendationRuleSet;
     private final CacheManager cacheManager;
+    private final InfoEndpoint infoEndpoint;
+    private final RecommendationRuleSetImpl recommendationRuleSet;
 
-    public ManagementController(RecommendationRuleSetImpl recommendationRuleSet,
-                                CacheManager cacheManager) {
-        this.recommendationRuleSet = recommendationRuleSet;
+    public ManagementController(CacheManager cacheManager,
+                                InfoEndpoint infoEndpoint,
+                                RecommendationRuleSetImpl recommendationRuleSet) {
         this.cacheManager = cacheManager;
+        this.infoEndpoint = infoEndpoint;
+        this.recommendationRuleSet = recommendationRuleSet;
     }
 
     @PostMapping("/clear-caches")
@@ -30,10 +32,14 @@ public class ManagementController {
     }
 
     @GetMapping("/info")
-    public ResponseEntity<Map<String, String>> getInfo() {
+    public ResponseEntity<Map<String, Object>> getInfo() {
+        Map<String, Object> info = infoEndpoint.info();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> buildInfo = (Map<String, Object>) info.get("build");
+
         return ResponseEntity.ok(Map.of(
-                "name", "STAR Recommendation Service",
-                "version", "0.0.1-SNAPSHOT"
+                "name", buildInfo.get("name"),
+                "version", buildInfo.get("version")
         ));
     }
 }

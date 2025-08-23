@@ -13,6 +13,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 import org.skypro.star.model.RuleStatistic;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Objects;
+import java.util.Optional;
 
 import java.sql.Array;
 import java.util.*;
@@ -62,7 +65,6 @@ public class RecommendationRepository {
             throw new RuntimeException("Failed to increment stat counter", e);
         }
     }
-
     // Z Получаем статистику по всем правилам
     public List<RuleStatistic> getAllRuleStats() {
         String sql = """

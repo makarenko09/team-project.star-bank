@@ -6,4 +6,6 @@ import java.util.UUID;
 
 public interface RecommendationRuleSet {
     RecommendationAnswerUser getRecommendation(UUID uuid);
+
+    RecommendationAnswerUser getRecommendationsByUsername(String username);
 }
