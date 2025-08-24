@@ -116,7 +116,7 @@ public class RecommendationRepository {
     public boolean insertRecommendationWithQuery(UUID ruleId, String name, @Nullable List<DynamicRule> rules, String text) {
         if (checkRuleId(ruleId)) {
             logger.warn("Recommendation with id {} already exists", ruleId);
-            return false;
+            return appendDynamicRules(ruleId, rules);
         }
 
 
