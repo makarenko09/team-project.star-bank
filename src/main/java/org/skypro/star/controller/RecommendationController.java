@@ -29,6 +29,8 @@ public class RecommendationController {
         this.recommendationRuleSet = recommendationRuleSet;
         this.cacheManager = cacheManager;
     }
+
+    @Autowired
     private BuildProperties buildProperties;
 
     @GetMapping("/management/info")
