@@ -33,6 +33,10 @@ public class RecommendationController {
     @Autowired
     private BuildProperties buildProperties;
 
+    @GetMapping("/recommendation/{userId}")
+    public RecommendationAnswerUser getRecommendation(@PathVariable(name = "userId") UUID userId) {
+        return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
+    }
     @GetMapping("/management/info")
     public Map<String, String> getInfo() {
         Map<String, String> info = new HashMap<>();
@@ -40,21 +44,17 @@ public class RecommendationController {
         info.put("version", buildProperties.getVersion());
         return info;
     }
-    @GetMapping("/recommendation/{userId}")
-    public RecommendationAnswerUser getRecommendation(@PathVariable(name = "userId") UUID userId) {
-        return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
-    }
-
-    @GetMapping("/rule/stats")
-    public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
-                return recommendationRuleSet.getStatsUsageGetRecommendationByUser();
-    }
 
     @PostMapping("/management/clear-caches")
     public void clearAllCaches() {
         cacheManager.getCacheNames().forEach(cacheName ->
                 cacheManager.getCache(cacheName).clear()
         );
+    }
+
+    @GetMapping("/rule/stats")
+    public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
+                return recommendationRuleSet.getStatsUsageGetRecommendationByUser();
     }
 
     @PostMapping("/rule")

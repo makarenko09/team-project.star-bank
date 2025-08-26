@@ -3,6 +3,7 @@ package org.skypro.star.repository;
 import org.skypro.star.exception.NoValidValueException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
 import java.util.Arrays;
@@ -34,6 +35,19 @@ public class TransactionRepository {
         return result != null ? result : 0;
     }
 
+    public int getSumOfTransactionsByProductTypeAndTransactionType(UUID userUUID, String productType, String transactionType) {
+        String sql = """
+                SELECT SUM(t.AMOUNT)
+                FROM transactions t
+                INNER JOIN products p ON t.product_id = p.id
+                WHERE t.user_ID = ? AND p.type = ? AND t.type = ?
+                """;
+        Integer sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType,transactionType);
+        sum = sum != null ? sum : 0;
+        return sum;
+    }
+
+
     public boolean findAptTypeProductByProductType(UUID userUUID, String productType) {
         String sql = """
                 SELECT EXISTS (
@@ -45,6 +59,10 @@ public class TransactionRepository {
                 """;
         Boolean result = jdbcTemplateH2.queryForObject(sql, Boolean.class, userUUID, productType);
         return result != null && result;
+    }
+
+    public enum transactionType {
+        DEPOSIT, WITHDRAW;
     }
 
     public boolean findCurrentSumDepositsMoreThatAptSumOrAndEqualsByProductTypeAndAmount(
@@ -60,13 +78,13 @@ public class TransactionRepository {
         return equals ? sum >= amount : sum > amount;
     }
 
+    /// On this if we not accept amount of variable, then compare to (transactionType) ['WITHDRAW'][#transactionType] by require ['someProductType'][org.skypro.star.service.RecommendationRuleSetImpl#productType]
     public boolean compareCurrentSumDepositsToAptSumByProductTypeAndAmountAndAnyOperator(
-            UUID userUUID, String productType, Integer amount, String operator) {
+            UUID userUUID, String productType, @Nullable Integer amount, String operator) {
         List<String> correctOperator = Arrays.asList(">", "<", "=", ">=", "<=");
         if (!correctOperator.contains(operator)) {
             throw new NoValidValueException(operator);
         }
-
         String sql = """
                 SELECT SUM(t.AMOUNT)
                 FROM transactions t
@@ -75,6 +93,37 @@ public class TransactionRepository {
                 """;
         Integer sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType);
         sum = sum != null ? sum : 0;
+
+        if (amount == null) {
+            amount = getSumOfTransactionsByProductTypeAndTransactionType(userUUID, productType, "WITHDRAW");
+        }
+
+        return switch (operator) {
+            case ">" -> sum > amount;
+            case "<" -> sum < amount;
+            case "=" -> sum.equals(amount);
+            case ">=" -> sum >= amount;
+            case "<=" -> sum <= amount;
+            default -> throw new NoValidValueException(operator);
+        };
+    }
+
+    /// On this if we not accept amount of variable (when String transactionType is null), then compare to (transactionType) ['WITHDRAW'][#transactionType] by require ['someProductType'][org.skypro.star.service.RecommendationRuleSetImpl#productType]
+    public boolean compareCurrentSumDepositsToAptSumByProductTypeAndAmountAndAnyOperatorAndTransactionType(
+            UUID userUUID, String productType, @Nullable String transactionType, String operator, Integer amount) {
+        List<String> correctOperator = Arrays.asList(">", "<", "=", ">=", "<=");
+        if (!correctOperator.contains(operator)) {
+            throw new NoValidValueException(operator);
+        }
+        String sql = """
+                SELECT SUM(t.AMOUNT)
+                FROM transactions t
+                INNER JOIN products p ON t.product_id = p.id
+                WHERE t.user_ID = ? AND p.type = ? AND t.type = ?
+                """;
+        Integer sum = jdbcTemplateH2.queryForObject(sql, Integer.class, userUUID, productType, transactionType);
+        sum = sum != null ? sum : 0;
+
 
         return switch (operator) {
             case ">" -> sum > amount;

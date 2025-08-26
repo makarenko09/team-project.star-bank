@@ -210,14 +210,7 @@ public class RecommendationRepository {
             return false;
         }
 
-        List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
-        boolean containsCorrectQuery = rules.stream().map(DynamicRule::getQuery).allMatch(correctQuery::contains);
-        logger.info("Rules list contains correctQuery, boolean = {}", containsCorrectQuery);
-
-        if (!containsCorrectQuery) {
-            logger.error("Invalid query in rules: {}", rules);
-            throw new NoValidValueException("Invalid query in rules: " + rules);
-        }
+        checkContainDynamicRules(rules);
 
         if (!checkRuleId(ruleId)) {
             logger.error("No recommendation found for id: {}", ruleId);
@@ -245,6 +238,25 @@ public class RecommendationRepository {
         logger.info("Appended {} rules for ruleId: {}, success: {}", updatedCount, ruleId, success);
         return success;
 
+    }
+
+    public boolean checkContainDynamicRules(List<DynamicRule> rules) {
+        List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
+        boolean containsCorrectQuery = rules.stream().map(DynamicRule::getQuery).allMatch(correctQuery::contains);
+        if (!containsCorrectQuery) {
+            logger.error("Invalid query in rules: {}", rules);
+            throw new NoValidValueException("Invalid query in rules: " + rules);
+        }
+        return containsCorrectQuery;
+    }
+
+    public void checkContainDynamicRules(DynamicRule[] rules) {
+        List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
+        boolean containsCorrectQuery = Arrays.stream(rules).map(DynamicRule::getQuery).allMatch(correctQuery::contains);
+        if (!containsCorrectQuery) {
+            logger.error("Invalid query in rules: {}", rules);
+            throw new NoValidValueException("Invalid query in rules: " + rules);
+        }
     }
 
     public boolean insertUser(UUID rulesId, UUID userId) {
