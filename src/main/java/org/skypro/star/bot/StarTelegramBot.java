@@ -7,7 +7,7 @@ import com.pengrad.telegrambot.request.SendMessage;
 import org.skypro.star.configuration.BotProperties;
 import org.skypro.star.model.Recommendation;
 import org.skypro.star.model.RecommendationAnswerUser;
-import org.skypro.star.service.RecommendationRuleSetImpl;
+import org.skypro.star.service.RecommendationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -22,11 +22,11 @@ public class StarTelegramBot {
 
     private final TelegramBot bot;
     private final BotProperties botProperties;
-    private final RecommendationRuleSetImpl recommendationService;
+    private final RecommendationService recommendationService;
     private final Logger log = LoggerFactory.getLogger(StarTelegramBot.class);
 
     public StarTelegramBot(BotProperties botProperties,
-                           RecommendationRuleSetImpl recommendationService) {
+                           RecommendationService recommendationService) {
         this.botProperties = botProperties;
         this.recommendationService = recommendationService;
         this.bot = new TelegramBot(botProperties.getToken());

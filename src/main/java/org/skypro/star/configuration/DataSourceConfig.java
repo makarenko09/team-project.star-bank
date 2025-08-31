@@ -1,11 +1,9 @@
 package org.skypro.star.configuration;
 
-
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -15,18 +13,22 @@ import javax.sql.DataSource;
 
 @Configuration
 public class DataSourceConfig {
+
     @Bean(name = "postgresqlDataSource")
-    @ConfigurationProperties("spring.datasource.postgresql")
-    public DataSource getDataSource(@Value("${spring.datasource.postgresql.url}") String url) {
+    public DataSource postgresqlDataSource(
+            @Value("${spring.datasource.postgresql.url}") String url,
+            @Value("${spring.datasource.postgresql.username}") String username,
+            @Value("${spring.datasource.postgresql.password}") String password) {
 
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
-        config.addDataSourceProperty("portNumber", "5435");
-        config.addDataSourceProperty("user", "team-group");
-        config.addDataSourceProperty("password", "333");
-        HikariDataSource ds = new HikariDataSource(config);
-        return ds;
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setDriverClassName("org.postgresql.Driver");
+
+        return new HikariDataSource(config);
     }
+
     @Primary
     @Bean(name = "postgresqlJdbcTemplate")
     public JdbcTemplate postgresqlJdbcTemplate(@Qualifier("postgresqlDataSource") DataSource dataSource) {
@@ -34,13 +36,24 @@ public class DataSourceConfig {
     }
 
     @Bean(name = "h2DataSource")
-    @ConfigurationProperties(prefix = "spring.datasource.h2")
-    public DataSource h2DataSource(@Value("${spring.datasource.h2.url}") String url) {
-        HikariDataSource ds = new HikariDataSource();
-        ds.setJdbcUrl(url);
-        ds.setDriverClassName("org.h2.Driver");
-        ds.setReadOnly(true);
-        return ds;
+    public DataSource h2DataSource(
+            @Value("${spring.datasource.h2.url}") String url,
+            @Value("${spring.datasource.h2.username}") String username,
+            @Value("${spring.datasource.h2.password}") String password) {
+
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(url);
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setDriverClassName("org.h2.Driver");
+        config.setReadOnly(true);
+
+        // Упрощенные настройки для отладки
+        config.setMaximumPoolSize(2);
+        config.setMinimumIdle(1);
+        config.setConnectionTimeout(30000);
+
+        return new HikariDataSource(config);
     }
 
     @Bean(name = "h2JdbcTemplate")

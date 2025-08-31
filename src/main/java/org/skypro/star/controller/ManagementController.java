@@ -1,6 +1,8 @@
 package org.skypro.star.controller;
 
-import org.skypro.star.service.RecommendationRuleSetImpl;
+import org.skypro.star.service.RecommendationService;
+import org.skypro.star.service.RuleManagementService;
+import org.skypro.star.service.StatisticsService;
 import org.springframework.boot.actuate.info.InfoEndpoint;
 import org.springframework.cache.CacheManager;
 import org.springframework.http.ResponseEntity;
@@ -14,14 +16,20 @@ public class ManagementController {
 
     private final CacheManager cacheManager;
     private final InfoEndpoint infoEndpoint;
-    private final RecommendationRuleSetImpl recommendationRuleSet;
+    private final RecommendationService recommendationService;
+    private final RuleManagementService ruleManagementService;
+    private final StatisticsService statisticsService;
 
     public ManagementController(CacheManager cacheManager,
                                 InfoEndpoint infoEndpoint,
-                                RecommendationRuleSetImpl recommendationRuleSet) {
+                                RecommendationService recommendationService,
+                                RuleManagementService ruleManagementService,
+                                StatisticsService statisticsService) {
         this.cacheManager = cacheManager;
         this.infoEndpoint = infoEndpoint;
-        this.recommendationRuleSet = recommendationRuleSet;
+        this.recommendationService = recommendationService;
+        this.ruleManagementService = ruleManagementService;
+        this.statisticsService = statisticsService;
     }
 
     @PostMapping("/clear-caches")

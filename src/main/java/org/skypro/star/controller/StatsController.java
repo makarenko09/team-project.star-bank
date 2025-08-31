@@ -1,26 +1,24 @@
 package org.skypro.star.controller;
 
 import org.skypro.star.model.DTO.RuleStatsResponse;
-import org.skypro.star.model.RuleStatistic;
-import org.skypro.star.service.RecommendationRuleSetImpl;
+import org.skypro.star.service.StatisticsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
+@RequestMapping("/api/statistics")
 public class StatsController {
 
-    private final RecommendationRuleSetImpl recommendationRuleSet;
+    private final StatisticsService statisticsService;
 
-    public StatsController(RecommendationRuleSetImpl recommendationRuleSet) {
-        this.recommendationRuleSet = recommendationRuleSet;
+    public StatsController(StatisticsService statisticsService) {
+        this.statisticsService = statisticsService;
     }
 
-    @GetMapping("/rule/stats")
+    @GetMapping("/rules")
     public ResponseEntity<RuleStatsResponse> getRuleStats() {
-        List<RuleStatistic> stats = recommendationRuleSet.getRuleStats();
-        return ResponseEntity.ok(new RuleStatsResponse(stats));
+        return ResponseEntity.ok(statisticsService.getRuleStats());
     }
 }
