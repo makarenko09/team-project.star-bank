@@ -110,13 +110,14 @@ public class RecommendationRepository {
 
     public List<UUID> getAllIdDynamicRules() {
         String sql = "SELECT id FROM recommendation";
-        return jdbcTemplatePostgresql.query(sql, (rs, rowNum) -> rs.getObject("id", UUID.class));
+         jdbcTemplatePostgresql.query(sql, (rs, rowNum) -> rs.getObject("id", UUID.class));
+        return null;
     }
 
     public boolean insertRecommendationWithQuery(UUID ruleId, String name, @Nullable List<DynamicRule> rules, String text) {
         if (checkRuleId(ruleId)) {
             logger.warn("Recommendation with id {} already exists", ruleId);
-            return false;
+            return appendDynamicRules(ruleId, rules);
         }
 
 
@@ -210,14 +211,7 @@ public class RecommendationRepository {
             return false;
         }
 
-        List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
-        boolean containsCorrectQuery = rules.stream().map(DynamicRule::getQuery).allMatch(correctQuery::contains);
-        logger.info("Rules list contains correctQuery, boolean = {}", containsCorrectQuery);
-
-        if (!containsCorrectQuery) {
-            logger.error("Invalid query in rules: {}", rules);
-            throw new NoValidValueException("Invalid query in rules: " + rules);
-        }
+        checkContainDynamicRules(rules);
 
         if (!checkRuleId(ruleId)) {
             logger.error("No recommendation found for id: {}", ruleId);
@@ -247,6 +241,25 @@ public class RecommendationRepository {
 
     }
 
+    public boolean checkContainDynamicRules(List<DynamicRule> rules) {
+        List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
+        boolean containsCorrectQuery = rules.stream().map(DynamicRule::getQuery).allMatch(correctQuery::contains);
+        if (!containsCorrectQuery) {
+            logger.error("Invalid query in rules: {}", rules);
+            throw new NoValidValueException("Invalid query in rules: " + rules);
+        }
+        return containsCorrectQuery;
+    }
+
+    public void checkContainDynamicRules(DynamicRule[] rules) {
+        List<String> correctQuery = Arrays.asList("USER_OF", "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW", "TRANSACTION_SUM_COMPARE");
+        boolean containsCorrectQuery = Arrays.stream(rules).map(DynamicRule::getQuery).allMatch(correctQuery::contains);
+        if (!containsCorrectQuery) {
+            logger.error("Invalid query in rules: {}", rules);
+            throw new NoValidValueException("Invalid query in rules: " + rules);
+        }
+    }
+
     public boolean insertUser(UUID rulesId, UUID userId) {
         String sql = """
                 UPDATE recommendation SET users = array_append(users, ?) WHERE id = ?
@@ -261,6 +274,7 @@ public class RecommendationRepository {
                 """;
         jdbcTemplatePostgresql.update(sql, ruleId);
     }
+
 
     public void incrementCountTriggerProcessingUserGetRecommendation(UUID ruleId) {
         String updateSql = """
@@ -290,5 +304,6 @@ public class RecommendationRepository {
             return 0;
         }
     }
+
 }
 

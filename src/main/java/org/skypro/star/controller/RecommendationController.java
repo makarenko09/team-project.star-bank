@@ -21,38 +21,24 @@ import java.util.UUID;
 public class RecommendationController {
     private final RecommendationRuleSetImpl recommendationRuleSet;
 
-    private final CacheManager cacheManager;
+
     private final Logger logger = LoggerFactory.getLogger(RecommendationController.class);
 
-
-    public RecommendationController(RecommendationRuleSetImpl recommendationRuleSet, CacheManager cacheManager) {
+    public RecommendationController(RecommendationRuleSetImpl recommendationRuleSet) {
         this.recommendationRuleSet = recommendationRuleSet;
-        this.cacheManager = cacheManager;
     }
-    private BuildProperties buildProperties;
 
-    @GetMapping("/management/info")
-    public Map<String, String> getInfo() {
-        Map<String, String> info = new HashMap<>();
-        info.put("name", buildProperties.getName());
-        info.put("version", buildProperties.getVersion());
-        return info;
-    }
     @GetMapping("/recommendation/{userId}")
     public RecommendationAnswerUser getRecommendation(@PathVariable(name = "userId") UUID userId) {
         return recommendationRuleSet.getRecommendation(UUID.fromString(userId.toString()));
     }
 
+
+
+
     @GetMapping("/rule/stats")
     public StatsUsageGetRecommendationByUser getStatsUsageGetRecommendationByUser() {
                 return recommendationRuleSet.getStatsUsageGetRecommendationByUser();
-    }
-
-    @PostMapping("/management/clear-caches")
-    public void clearAllCaches() {
-        cacheManager.getCacheNames().forEach(cacheName ->
-                cacheManager.getCache(cacheName).clear()
-        );
     }
 
     @PostMapping("/rule")
@@ -73,5 +59,6 @@ public class RecommendationController {
     @DeleteMapping("/rule")
     public void deleteDynamicRule(@RequestBody UUID ruleId) {
         recommendationRuleSet.deleteData(ruleId);
+
     }
 }

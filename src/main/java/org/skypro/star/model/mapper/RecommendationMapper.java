@@ -1,10 +1,8 @@
 package org.skypro.star.model.mapper;
 
-import org.skypro.star.model.DynamicRule;
-import org.skypro.star.model.Recommendation;
-import org.skypro.star.model.RecommendationAnswerDynamicRule;
-import org.skypro.star.model.RecommendationWithDynamicRule;
+import org.skypro.star.model.*;
 import org.skypro.star.repository.RecommendationRepository;
+import org.skypro.star.service.AcceptKeyForDynamicRule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -24,14 +22,9 @@ public class RecommendationMapper {
     public Function<Recommendation, RecommendationWithDynamicRule> fromRecommendationToRecommendationWithDynamicRule() {
         return recommendation -> {
             List<DynamicRule> dynamicRules = recommendationRepository.getDynamicRulesByIdFromJSONB(recommendation.getId());
-//            Object[] array = dynamicRules.toArray();
+
             DynamicRule[] arrDynamicRules = Arrays.copyOf(dynamicRules.toArray(), dynamicRules.size(), DynamicRule[].class);
-            return new RecommendationWithDynamicRule(
-                    recommendation.getName(),
-                    recommendation.getId(),
-                    recommendation.getText(),
-                    arrDynamicRules
-            );
+            return new RecommendationWithDynamicRule(recommendation.getName(), recommendation.getId(), recommendation.getText(), arrDynamicRules);
         };
     }
 

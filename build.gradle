@@ -39,11 +39,13 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:2.8.6'
 
     //Telegram
+
     implementation 'org.telegram:telegrambots-spring-boot-starter:6.7.0'
     implementation 'org.telegram:telegrambots-abilities:6.7.0'
 //     Для PostConstruct в Spring Boot 3
-//    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+
     //cache
     implementation 'org.springframework.boot:spring-boot-starter-cache'
 
@@ -59,7 +61,9 @@ dependencies {
     //add to project Spring AOP (Aspect)
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
+
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
 
 }
 configurations.all {
@@ -71,4 +75,17 @@ tasks.named('test') {
 
 springBoot {
     buildInfo()
+}
+
+javadoc {
+    destinationDir = file("${buildDir}/docs/javadoc")
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+
+    // Для Spring Boot и Lombok
+    options.addBooleanOption('html5', true)
+
+    // Исключаем generated папки (если есть)
+    exclude '**/generated/**'
 }
