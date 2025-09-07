@@ -9,7 +9,10 @@ import org.skypro.star.repository.RecommendationRepository;
 import org.skypro.star.repository.TransactionRepository;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -25,8 +28,6 @@ public class DynamicRuleHandler {
         this.transactionRepository = transactionRepository;
         this.recommendationMapper = recommendationMapper;
     }
-
-//    private final Logger log = LoggerFactory.getLogger(DynamicRuleHandler.class);
 
     private boolean handleAnyDynamicRule(UUID userUUID, DynamicRule dynamicRule) {
         try {
@@ -100,21 +101,3 @@ public class DynamicRuleHandler {
         return result;
     }
 }
-
-
-//          List<UUID> result = allIdDynamicRules.stream().filter(allRuleId ->
-//                  {
-//                      for (UUID localRuleId : uuidListFromFirstRecommendationAnswerUser) {
-//                          int compareTo = allRuleId.compareTo(localRuleId);
-//                          if (compareTo == 0) {
-//                              boolean afterCompare = true;
-//                              log.debug("From AllUUIDRules '{}' is duplicated on LocalUUIDRule {}. Handle on method severanceFromLocalRuleInCode()" +
-//                                        " with compareTo allRuleId.compareTo(localRuleId)= {}", allRuleId, localRuleId, afterCompare);
-//                              return !afterCompare;
-//                          }
-//                      }
-//                      log.debug("From AllUUIDRules '{}' is not duplicated on LocalUUIDRule {}. Handle on method severanceFromLocalRuleInCode()" +
-//                                " without return", allRuleId);
-//                      return true;
-//                  }
-//          ).collect(Collectors.toList());

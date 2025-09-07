@@ -17,13 +17,14 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.data.util.Optionals;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.skypro.star.service.RecommendationRuleSetImpl.recommendation.getName;
 
@@ -84,8 +85,8 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
         log.debug("Continue incremental recommendation user answer: {}", recommendationAnswerWithDynamicRule.stream().map(Recommendation::getName).collect(Collectors.toList()));
 
 //        List<Recommendation> result = Stream.concat(localRecommendationAnswerUser.stream(), recommendationAnswerWithDynamicRule.stream()).collect(Collectors.toList());
-//        List<Recommendation> result = (List<Recommendation>) CollectionUtils.union(localRecommendationAnswerUser, recommendationAnswerWithDynamicRule);
-        List<Recommendation> result = new ArrayList<>(recommendationAnswerWithDynamicRule);
+        List<Recommendation> result = (List<Recommendation>) CollectionUtils.union(localRecommendationAnswerUser, recommendationAnswerWithDynamicRule);
+//        List<Recommendation> result = new ArrayList<>(recommendationAnswerWithDynamicRule);
 
         log.debug("Execute incremental recommendation user answer: {}", result.stream().map(Recommendation::getName).collect(Collectors.toList()));
 
