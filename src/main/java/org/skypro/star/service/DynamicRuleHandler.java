@@ -9,9 +9,7 @@ import org.skypro.star.repository.RecommendationRepository;
 import org.skypro.star.repository.TransactionRepository;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -20,6 +18,7 @@ public class DynamicRuleHandler {
     private final RecommendationRepository recommendationRepository;
     private final TransactionRepository transactionRepository;
     private final RecommendationMapper recommendationMapper;
+
 
     public DynamicRuleHandler(RecommendationRepository recommendationRepository, TransactionRepository transactionRepository, RecommendationMapper recommendationMapper) {
         this.recommendationRepository = recommendationRepository;
@@ -35,7 +34,7 @@ public class DynamicRuleHandler {
             return getQueryTypeDynamicRule.checkRule(userUUID, transactionRepository, dynamicRule);
 
         } catch (IllegalArgumentException e) {
-            log.error("Enum error in handleAnyDynamicRule({}): ", e.getMessage());
+            log.error("Enum error in handleAnyDynamicRule({},{},{}): ", e.getMessage(), e.getStackTrace(), dynamicRule.toString());
             throw e;
         }
     }
@@ -46,7 +45,7 @@ public class DynamicRuleHandler {
     /// @see <a href="https://www.geeksforgeeks.org/java/stream-allmatch-java-examples/">usage: .allMatch</a>
     /// @see <a href="https://quickref.me/java#:~:text=for%20(int%20i%20%3D%200%3B%20i%20%3C%205%3B%20i%2B%2B)%20%7B%0A%20%20if%20(i%20%3D%3D%203)%20%7B%0A%20%20%20%20continue%3B%0A%20%20%7D%0A%20%20System.out.print(i)%3B%0A%7D%0A//%20Outputs%3A%2001245">if (...) continue </a>
     public List<Recommendation> handleQueryTypeDynamicRule(UUID userUUID, List<Recommendation> localRecommendationAnswerUser) {
-        Set<UUID> uuidListWithoutLocalRecommendationAnswerUser = severanceFromLocalRuleInCode(localRecommendationAnswerUser);
+        List<UUID> uuidListWithoutLocalRecommendationAnswerUser = severanceFromLocalRuleInCode(localRecommendationAnswerUser);
 
         log.debug("Load data after clean from local recommendation answer: {}", uuidListWithoutLocalRecommendationAnswerUser.toString());
         uuidListWithoutLocalRecommendationAnswerUser.stream().filter(id -> {
@@ -69,14 +68,53 @@ public class DynamicRuleHandler {
                 .collect(Collectors.toList());
     }
 
-    private Set<UUID> severanceFromLocalRuleInCode(List<Recommendation> localRecommendationAnswerUser) {
+    private List<UUID> severanceFromLocalRuleInCode(List<Recommendation> localRecommendationAnswerUser) {
 
-        Set<UUID> uuidListFromFirstRecommendationAnswerUser = localRecommendationAnswerUser.stream()
+        List<UUID> uuidListFromFirstRecommendationAnswerUser = localRecommendationAnswerUser.stream()
                 .map(Recommendation::getId)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
+        log.debug("After local recommendation answer: {}", uuidListFromFirstRecommendationAnswerUser);
         List<UUID> allIdDynamicRules = recommendationRepository.getAllIdDynamicRules();
 
-        Set<UUID> filtered = allIdDynamicRules.stream().filter(idRule -> !uuidListFromFirstRecommendationAnswerUser.contains(idRule)).collect(Collectors.toSet());
-        return filtered;
+        List<UUID> result = new ArrayList<>();
+                Optional<List<UUID>> optionalUUIDS = Optional.ofNullable(allIdDynamicRules);
+
+        while (optionalUUIDS.isPresent()) {
+          result = optionalUUIDS.get().stream().filter(allRuleId ->
+                  {
+                      for (UUID localRuleId : uuidListFromFirstRecommendationAnswerUser) {
+                          int compareTo = allRuleId.compareTo(localRuleId);
+                          if (compareTo == 0) {
+                              boolean afterCompare = true;
+                              log.debug("From AllUUIDRules '{}' is duplicated on LocalUUIDRule {}. Handle on method severanceFromLocalRuleInCode()" +
+                                        " with compareTo allRuleId.compareTo(localRuleId)= {}", allRuleId, localRuleId, afterCompare);
+                              return !afterCompare;
+                          }
+                      }
+                      log.debug("From AllUUIDRules '{}' is not duplicated on LocalUUIDRule {}. Handle on method severanceFromLocalRuleInCode()" +
+                                " without return", allRuleId);
+                      return true;
+                  }
+          ).collect(Collectors.toList());
+      }
+        return result;
     }
 }
+
+
+//          List<UUID> result = allIdDynamicRules.stream().filter(allRuleId ->
+//                  {
+//                      for (UUID localRuleId : uuidListFromFirstRecommendationAnswerUser) {
+//                          int compareTo = allRuleId.compareTo(localRuleId);
+//                          if (compareTo == 0) {
+//                              boolean afterCompare = true;
+//                              log.debug("From AllUUIDRules '{}' is duplicated on LocalUUIDRule {}. Handle on method severanceFromLocalRuleInCode()" +
+//                                        " with compareTo allRuleId.compareTo(localRuleId)= {}", allRuleId, localRuleId, afterCompare);
+//                              return !afterCompare;
+//                          }
+//                      }
+//                      log.debug("From AllUUIDRules '{}' is not duplicated on LocalUUIDRule {}. Handle on method severanceFromLocalRuleInCode()" +
+//                                " without return", allRuleId);
+//                      return true;
+//                  }
+//          ).collect(Collectors.toList());

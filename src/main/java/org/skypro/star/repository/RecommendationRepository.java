@@ -110,7 +110,8 @@ public class RecommendationRepository {
 
     public List<UUID> getAllIdDynamicRules() {
         String sql = "SELECT id FROM recommendation";
-        return jdbcTemplatePostgresql.query(sql, (rs, rowNum) -> rs.getObject("id", UUID.class));
+         jdbcTemplatePostgresql.query(sql, (rs, rowNum) -> rs.getObject("id", UUID.class));
+        return null;
     }
 
     public boolean insertRecommendationWithQuery(UUID ruleId, String name, @Nullable List<DynamicRule> rules, String text) {

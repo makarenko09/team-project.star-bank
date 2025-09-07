@@ -1,5 +1,6 @@
 package org.skypro.star.service;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.skypro.star.StarApplication;
 import org.skypro.star.controller.RecommendationController;
 import org.skypro.star.model.*;
@@ -16,13 +17,11 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.util.Optionals;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -77,19 +76,22 @@ public class RecommendationRuleSetImpl implements RecommendationRuleSet {
     public RecommendationAnswerUser getRecommendation(UUID userUUID) {
 
         List<Recommendation> localRecommendationAnswerUser = handlerOverlap(userUUID);
-        log.info("Start incremental recommendation user answer: {}", localRecommendationAnswerUser);
+        log.debug("Start incremental recommendation user answer: {}", localRecommendationAnswerUser.stream().map(Recommendation::getName).collect(Collectors.toList()));
 
-        List<Recommendation> copyOfLocal = new ArrayList<>(localRecommendationAnswerUser);
+//        Optional<List<Recommendation>> localRecommendationAnswerUser1 = Optional.of(localRecommendationAnswerUser);
+        List<Recommendation> copied = List.copyOf(localRecommendationAnswerUser);
+        List<Recommendation> recommendationAnswerWithDynamicRule = dynamicRuleHandler.handleQueryTypeDynamicRule(userUUID, copied);
+        log.debug("Continue incremental recommendation user answer: {}", recommendationAnswerWithDynamicRule.stream().map(Recommendation::getName).collect(Collectors.toList()));
 
-        List<Recommendation> recommendationAnswerWithDynamicRule = dynamicRuleHandler.handleQueryTypeDynamicRule(userUUID, copyOfLocal);
-        log.info("Continue incremental recommendation user answer: {}", recommendationAnswerWithDynamicRule);
+//        List<Recommendation> result = Stream.concat(localRecommendationAnswerUser.stream(), recommendationAnswerWithDynamicRule.stream()).collect(Collectors.toList());
+//        List<Recommendation> result = (List<Recommendation>) CollectionUtils.union(localRecommendationAnswerUser, recommendationAnswerWithDynamicRule);
+        List<Recommendation> result = new ArrayList<>(recommendationAnswerWithDynamicRule);
 
-        List<Recommendation> result = Stream.concat(localRecommendationAnswerUser.stream(), recommendationAnswerWithDynamicRule.stream()).collect(Collectors.toList());
-        log.info("Execute incremental recommendation user answer: {}", result);
+        log.debug("Execute incremental recommendation user answer: {}", result.stream().map(Recommendation::getName).collect(Collectors.toList()));
 
         RecommendationAnswerUser recommendationAnswerUser = new RecommendationAnswerUser(userUUID.toString(), result);
 
-        log.info("recommendations = {}", recommendationAnswerUser);
+        log.debug("recommendations = {}", recommendationAnswerUser.getRecommendations().stream().map(Recommendation::getName).collect(Collectors.toList()));
         try {
             recommendationAnswerUser.getRecommendations().stream().map(Recommendation::getId).forEach(recommendationRepository::incrementCountTriggerProcessingUserGetRecommendation);
         } catch (EmptyResultDataAccessException e) {
